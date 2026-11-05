@@ -1,4 +1,4 @@
-const WORKBENCH_VERSION = '2026-11-05-data-export-import';
+const WORKBENCH_VERSION = '2026-11-05-undo-feature';
 const CACHE_NAME = `bloom-workbench-${WORKBENCH_VERSION}`;
 const CORE_ASSETS = [
   './',
