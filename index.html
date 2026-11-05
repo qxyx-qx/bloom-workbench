@@ -1,0 +1,2569 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>我的工作台 · Bloom Workspace</title>
+<meta name="theme-color" content="#5F95B3">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="我的工作台">
+<link rel="manifest" href="./manifest.webmanifest">
+<link rel="apple-touch-icon" href="./icons/icon-192.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800;900&family=Noto+Sans+SC:wght@300;400;500;700&family=ZCOOL+KuaiLe&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+/* ========== Reset & Base ========== */
+*,*::before,*::after{margin:0;padding:0;box-sizing:border-box}
+:root{
+  --bg:#F4F8F8;--bg2:#EAF3F4;--card:#FFFFFF;--card-hover:#F8FBFB;
+  --pink1:#D5E5E8;--pink2:#BFD6DD;--pink3:#8FB2C9;--pink4:#5F95B3;--pink5:#3F789B;
+  --grad:linear-gradient(135deg,#8FB2C9 0%,#D5E5E8 100%);
+  --grad2:linear-gradient(135deg,#5F95B3 0%,#8FB2C9 100%);
+  --grad3:linear-gradient(135deg,#A8C8D6 0%,#E6F0EE 100%);
+  --text:#34444C;--text2:#647983;--text3:#9BAFB6;
+  --green:#7BAE9A;--yellow:#D6B56D;--blue:#8FB2C9;--purple:#9FA7C8;--orange:#D39C73;
+  --shadow:0 4px 20px rgba(95,149,179,.12);
+  --shadow2:0 8px 30px rgba(95,149,179,.18);
+  --shadow3:0 2px 10px rgba(95,149,179,.08);
+  --r:16px;--r-sm:10px;--r-lg:24px;--r-xl:32px;
+  --sidebar-w:230px;
+}
+html{font-size:14px}
+body{font-family:'Nunito','Noto Sans SC',sans-serif;background:var(--bg);color:var(--text);line-height:1.6;min-height:100vh;overflow-x:hidden}
+::-webkit-scrollbar{width:8px;height:8px}
+::-webkit-scrollbar-track{background:transparent}
+::-webkit-scrollbar-thumb{background:var(--pink1);border-radius:10px}
+::-webkit-scrollbar-thumb:hover{background:var(--pink2)}
+a{text-decoration:none;color:inherit}
+button{font-family:inherit;cursor:pointer;border:none;outline:none}
+input,textarea,select{font-family:inherit;outline:none;border:none}
+img{max-width:100%;display:block}
+
+/* ========== Layout ========== */
+#app{display:flex;min-height:100vh}
+
+/* ========== Sidebar ========== */
+.sidebar{width:var(--sidebar-w);background:var(--card);box-shadow:4px 0 20px rgba(95,149,179,.08);display:flex;flex-direction:column;position:fixed;top:0;left:0;bottom:0;z-index:100;transition:transform .3s ease}
+.sidebar-profile{padding:24px 20px 20px;text-align:center;border-bottom:1px solid #EAF3F4}
+.avatar{width:64px;height:64px;border-radius:50%;background:var(--grad);margin:0 auto 10px;display:flex;align-items:center;justify-content:center;font-size:28px;box-shadow:0 4px 12px rgba(95,149,179,.3)}
+.profile-name{font-size:16px;font-weight:700;color:var(--text)}
+.profile-sub{font-size:11px;color:var(--text3);margin-top:2px}
+.sidebar-nav{flex:1;padding:12px 10px;overflow-y:auto}
+.nav-item{display:flex;align-items:center;gap:10px;padding:10px 14px;border-radius:var(--r-sm);margin-bottom:4px;cursor:pointer;transition:all .25s ease;font-size:13px;font-weight:600;color:var(--text2);position:relative}
+.nav-item:hover{background:var(--bg2);color:var(--pink4)}
+.nav-item.active{background:var(--grad2);color:#fff;box-shadow:0 4px 12px rgba(95,149,179,.3)}
+.nav-item .nav-icon{font-size:18px;width:24px;text-align:center}
+.nav-item .nav-badge{margin-left:auto;background:var(--pink3);color:#fff;font-size:10px;padding:1px 7px;border-radius:10px;font-weight:700}
+.nav-item.active .nav-badge{background:rgba(255,255,255,.3)}
+.sidebar-footer{padding:12px 20px;border-top:1px solid #EAF3F4;text-align:center}
+.sidebar-footer .clock{font-size:20px;font-weight:800;color:var(--pink3)}
+.sidebar-footer .date-text{font-size:11px;color:var(--text3)}
+
+/* ========== Main ========== */
+.main{margin-left:var(--sidebar-w);flex:1;padding:24px 32px;max-width:calc(100% - var(--sidebar-w))}
+.view{display:none;animation:fadeIn .4s ease}
+.view.active{display:block}
+@keyframes fadeIn{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
+
+/* ========== Common Components ========== */
+.page-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:24px}
+.page-title{font-size:26px;font-weight:800;color:var(--text);display:flex;align-items:center;gap:10px}
+.page-title .emoji{font-size:30px}
+.page-subtitle{font-size:13px;color:var(--text3);margin-top:2px}
+
+.card{background:var(--card);border-radius:var(--r);padding:20px;box-shadow:var(--shadow);margin-bottom:20px;transition:box-shadow .3s ease}
+.card:hover{box-shadow:var(--shadow2)}
+.card-title{font-size:15px;font-weight:700;color:var(--text);margin-bottom:14px;display:flex;align-items:center;gap:8px}
+.card-title .emoji{font-size:18px}
+
+.btn{padding:8px 18px;border-radius:var(--r-sm);font-size:13px;font-weight:700;transition:all .2s ease;display:inline-flex;align-items:center;gap:6px}
+.btn-primary{background:var(--grad2);color:#fff;box-shadow:0 4px 12px rgba(95,149,179,.3)}
+.btn-primary:hover{transform:translateY(-1px);box-shadow:0 6px 16px rgba(95,149,179,.4)}
+.btn-soft{background:var(--bg2);color:var(--pink4)}
+.btn-soft:hover{background:var(--pink1)}
+.btn-ghost{background:transparent;color:var(--text2);border:1px solid var(--pink1)}
+.btn-ghost:hover{background:var(--bg2)}
+.btn-sm{padding:5px 12px;font-size:12px}
+.btn-icon{width:36px;height:36px;border-radius:50%;display:flex;align-items:center;justify-content:center;padding:0}
+
+.input,.textarea,.select{width:100%;padding:10px 14px;border:2px solid #D5E5E8;border-radius:var(--r-sm);font-size:13px;background:#F8FBFB;color:var(--text);transition:border-color .2s}
+.input:focus,.textarea:focus,.select:focus{border-color:var(--pink3)}
+.textarea{resize:vertical;min-height:80px;line-height:1.7}
+.label{font-size:12px;font-weight:700;color:var(--text2);margin-bottom:6px;display:block}
+
+.badge{display:inline-flex;align-items:center;gap:4px;padding:3px 10px;border-radius:20px;font-size:11px;font-weight:700}
+.badge-pink{background:#D5E5E8;color:var(--pink4)}
+.badge-green{background:#E8F8EE;color:var(--green)}
+.badge-yellow{background:#FFF8E1;color:#F9A825}
+.badge-blue{background:#E3F2FD;color:var(--blue)}
+.badge-purple{background:#F3E5F5;color:var(--purple)}
+
+.progress-bar{height:8px;background:#D5E5E8;border-radius:10px;overflow:hidden}
+.progress-fill{height:100%;background:var(--grad2);border-radius:10px;transition:width .5s ease}
+
+.stat-grid{display:grid;gap:16px}
+.stat-card{background:var(--card);border-radius:var(--r);padding:18px;box-shadow:var(--shadow);text-align:center;transition:transform .2s ease,box-shadow .2s ease;cursor:pointer;position:relative;overflow:hidden}
+.stat-card:hover{transform:translateY(-3px);box-shadow:var(--shadow2)}
+.stat-card .stat-icon{font-size:28px;margin-bottom:8px}
+.stat-card .stat-value{font-size:24px;font-weight:900;color:var(--text)}
+.stat-card .stat-label{font-size:11px;color:var(--text3);margin-top:2px}
+.stat-card .stat-sub{font-size:10px;color:var(--pink3);margin-top:4px}
+
+.empty-state{text-align:center;padding:40px 20px;color:var(--text3)}
+.empty-state .emoji{font-size:48px;margin-bottom:12px;opacity:.5}
+.empty-state .text{font-size:14px}
+
+/* ========== Home Page ========== */
+.hero-banner{background:var(--grad);border-radius:var(--r-lg);padding:28px 32px;color:#fff;margin-bottom:24px;position:relative;overflow:hidden}
+.hero-banner::after{content:'';position:absolute;top:-20px;right:-20px;width:120px;height:120px;border-radius:50%;background:rgba(255,255,255,.15)}
+.hero-banner::before{content:'🦋';position:absolute;top:10px;right:20px;font-size:40px;opacity:.3}
+.hero-greeting{font-size:13px;opacity:.9;margin-bottom:4px}
+.hero-title{font-size:28px;font-weight:900;margin-bottom:6px}
+.hero-sub{font-size:13px;opacity:.85}
+
+.quote-card{background:var(--card);border-radius:var(--r);padding:20px 24px;box-shadow:var(--shadow);margin-bottom:24px;display:flex;align-items:center;gap:16px;position:relative}
+.quote-card .quote-icon{font-size:32px;opacity:.4}
+.quote-card .quote-text{flex:1}
+.quote-card .quote-en{font-size:15px;font-weight:700;color:var(--text);font-style:italic}
+.quote-card .quote-cn{font-size:12px;color:var(--text2);margin-top:2px}
+
+.task-item{display:flex;align-items:center;gap:12px;padding:10px 14px;border-radius:var(--r-sm);transition:background .2s;cursor:pointer}
+.task-item:hover{background:var(--bg2)}
+.task-check{width:22px;height:22px;border-radius:50%;border:2px solid var(--pink2);display:flex;align-items:center;justify-content:center;transition:all .2s;flex-shrink:0}
+.task-check.done{background:var(--green);border-color:var(--green);color:#fff}
+.task-check.done::after{content:'✓';font-size:13px;font-weight:700}
+.task-text{flex:1;font-size:13px;font-weight:600}
+.task-text.done{text-decoration:line-through;color:var(--text3)}
+.task-tag{font-size:10px;padding:2px 8px;border-radius:10px;font-weight:700}
+
+.activity-item{display:flex;align-items:flex-start;gap:12px;padding:10px 0;border-bottom:1px solid #F4F8F8}
+.activity-item:last-child{border-bottom:none}
+.activity-dot{width:8px;height:8px;border-radius:50%;margin-top:6px;flex-shrink:0}
+.activity-content{flex:1}
+.activity-text{font-size:12px;color:var(--text)}
+.activity-time{font-size:10px;color:var(--text3)}
+
+/* ========== Computer Page ========== */
+.upload-zone{border:2px dashed var(--pink2);border-radius:var(--r);padding:40px 20px;text-align:center;cursor:pointer;transition:all .2s;background:#F8FBFB}
+.upload-zone:hover{border-color:var(--pink3);background:var(--bg2)}
+.upload-zone.dragover{border-color:var(--pink4);background:#D5E5E8}
+.upload-zone .upload-icon{font-size:40px;margin-bottom:8px}
+.upload-zone .upload-text{font-size:14px;font-weight:700;color:var(--text2)}
+.upload-zone .upload-hint{font-size:11px;color:var(--text3);margin-top:4px}
+
+.kp-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:10px}
+.kp-item{padding:12px;border-radius:var(--r-sm);background:#F8FBFB;border:1px solid #D5E5E8;text-align:center;transition:all .2s}
+.kp-item .kp-name{font-size:12px;font-weight:700;color:var(--text)}
+.kp-item .kp-bar{height:5px;background:#D5E5E8;border-radius:5px;margin-top:6px;overflow:hidden}
+.kp-item .kp-bar-fill{height:100%;border-radius:5px}
+.kp-item .kp-rate{font-size:11px;color:var(--text3);margin-top:4px}
+
+table.data-table{width:100%;border-collapse:collapse;font-size:12px}
+.data-table th{text-align:left;padding:10px 12px;background:var(--bg2);color:var(--text2);font-weight:700;border-radius:var(--r-sm)}
+.data-table td{padding:10px 12px;border-bottom:1px solid #F4F8F8}
+.data-table tr:hover td{background:var(--bg2)}
+
+/* ========== Savings Page ========== */
+.savings-hero{background:var(--grad);border-radius:var(--r-lg);padding:28px;color:#fff;text-align:center;margin-bottom:20px;position:relative;overflow:hidden}
+.savings-hero .amount{font-size:42px;font-weight:900;letter-spacing:-1px}
+.savings-hero .label{font-size:13px;opacity:.85}
+
+.month-card{background:var(--card);border-radius:var(--r);padding:20px;box-shadow:var(--shadow);margin-bottom:16px}
+.month-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px}
+.month-title{font-size:16px;font-weight:800;color:var(--text)}
+.month-summary{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:16px}
+.month-summary .ms-item{text-align:center;padding:12px;border-radius:var(--r-sm)}
+.month-summary .ms-item.income{background:#E8F8EE}
+.month-summary .ms-item.expense{background:#FFEAEA}
+.month-summary .ms-item.balance{background:#FFF8E1}
+.month-summary .ms-label{font-size:11px;color:var(--text2);font-weight:600}
+.month-summary .ms-value{font-size:18px;font-weight:800;margin-top:2px}
+
+.txn-item{display:flex;align-items:center;gap:10px;padding:8px 12px;border-radius:var(--r-sm);transition:background .2s}
+.txn-item:hover{background:var(--bg2)}
+.txn-icon{width:32px;height:32px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0}
+.txn-icon.income{background:#E8F8EE}
+.txn-icon.expense{background:#FFEAEA}
+.txn-info{flex:1}
+.txn-desc{font-size:12px;font-weight:600}
+.txn-date{font-size:10px;color:var(--text3)}
+.txn-amount{font-size:14px;font-weight:800}
+.txn-amount.income{color:var(--green)}
+.txn-amount.expense{color:#FF6B6B}
+
+/* ========== Novel Page ========== */
+.novel-tabs{display:flex;gap:4px;background:var(--card);border-radius:var(--r);padding:6px;box-shadow:var(--shadow);margin-bottom:20px}
+.novel-tab{flex:1;padding:10px;border-radius:var(--r-sm);text-align:center;font-size:13px;font-weight:700;color:var(--text2);cursor:pointer;transition:all .2s}
+.novel-tab.active{background:var(--grad2);color:#fff;box-shadow:0 4px 12px rgba(95,149,179,.3)}
+.novel-tab:hover:not(.active){background:var(--bg2)}
+
+.novel-panel{display:none}
+.novel-panel.active{display:block;animation:fadeIn .3s ease}
+
+.layer-card{background:var(--card);border-radius:var(--r);padding:20px;box-shadow:var(--shadow);margin-bottom:16px;border-left:4px solid var(--pink3)}
+.layer-card.layer1{border-left-color:var(--pink3)}
+.layer-card.layer2{border-left-color:var(--purple)}
+.layer-card.layer3{border-left-color:var(--blue)}
+.layer-header{display:flex;align-items:center;gap:10px;margin-bottom:12px}
+.layer-badge{padding:3px 12px;border-radius:20px;font-size:11px;font-weight:700}
+.layer-title{font-size:15px;font-weight:800}
+
+.book-item{display:flex;align-items:center;gap:12px;padding:12px;border-radius:var(--r-sm);background:#F8FBFB;margin-bottom:8px}
+.book-item .book-icon{font-size:24px}
+.book-item .book-info{flex:1}
+.book-item .book-name{font-size:13px;font-weight:700}
+.book-item .book-desc{font-size:11px;color:var(--text3);margin-top:2px}
+.book-item .book-progress{width:80px}
+
+.week-card{border-radius:var(--r-sm);padding:14px;margin-bottom:8px;border:2px solid #D5E5E8;transition:all .2s}
+.week-card.current{border-color:var(--pink3);background:#F8FBFB}
+.week-card.done{border-color:var(--green);background:#F8FFF9}
+.week-card.locked{opacity:.5}
+.week-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:6px}
+.week-label{font-size:13px;font-weight:800}
+.week-tasks{font-size:12px;color:var(--text2);padding-left:8px}
+.week-tasks li{list-style:'› ';padding:2px 0}
+
+.writing-layout{display:flex;gap:16px;height:calc(100vh - 200px);min-height:500px}
+.writing-sidebar{width:240px;background:var(--card);border-radius:var(--r);box-shadow:var(--shadow);padding:16px;overflow-y:auto;flex-shrink:0}
+.writing-sidebar .ws-title{font-size:13px;font-weight:700;color:var(--text2);margin-bottom:12px;display:flex;align-items:center;justify-content:space-between}
+.chapter-item{padding:10px 12px;border-radius:var(--r-sm);cursor:pointer;transition:all .2s;margin-bottom:4px;font-size:12px;font-weight:600;color:var(--text2)}
+.chapter-item:hover{background:var(--bg2)}
+.chapter-item.active{background:var(--grad2);color:#fff}
+.chapter-item .ch-meta{font-size:10px;opacity:.7;margin-top:2px}
+.writing-main{flex:1;background:var(--card);border-radius:var(--r);box-shadow:var(--shadow);display:flex;flex-direction:column;overflow:hidden}
+.writing-toolbar{padding:12px 20px;border-bottom:1px solid #F4F8F8;display:flex;align-items:center;gap:12px}
+.writing-title-input{flex:1;font-size:16px;font-weight:700;border:none;background:transparent;color:var(--text)}
+.writing-editor{flex:1;padding:20px 30px;overflow-y:auto;font-size:15px;line-height:2;color:var(--text);resize:none;border:none;background:transparent;width:100%}
+.writing-editor::placeholder{color:var(--text3)}
+.writing-status{padding:8px 20px;border-top:1px solid #F4F8F8;display:flex;align-items:center;gap:16px;font-size:11px;color:var(--text3)}
+
+.scene-form-item{margin-bottom:14px}
+.scene-form-item .sfi-label{font-size:12px;font-weight:700;color:var(--pink4);margin-bottom:4px;display:flex;align-items:center;gap:4px}
+.scene-form-item .sfi-textarea{width:100%;min-height:80px;padding:10px 14px;border:2px solid #D5E5E8;border-radius:var(--r-sm);font-size:13px;line-height:1.7;background:#F8FBFB;resize:vertical}
+.scene-form-item .sfi-textarea:focus{border-color:var(--pink3)}
+
+/* ========== Crochet Page ========== */
+.crochet-stats{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin-bottom:20px}
+
+/* ========== Modal ========== */
+.modal-overlay{position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(90,69,80,.4);backdrop-filter:blur(4px);z-index:1000;display:none;align-items:center;justify-content:center;padding:20px}
+.modal-overlay.active{display:flex;animation:fadeIn .2s ease}
+.modal{background:var(--card);border-radius:var(--r-lg);max-width:560px;width:100%;max-height:85vh;overflow-y:auto;box-shadow:0 20px 60px rgba(0,0,0,.15)}
+.modal-header{padding:20px 24px;border-bottom:1px solid #F4F8F8;display:flex;align-items:center;justify-content:space-between}
+.modal-title{font-size:16px;font-weight:800;color:var(--text)}
+.modal-close{width:30px;height:30px;border-radius:50%;background:var(--bg2);display:flex;align-items:center;justify-content:center;font-size:16px;color:var(--text2);cursor:pointer;transition:all .2s}
+.modal-close:hover{background:var(--pink1);color:var(--pink4)}
+.modal-body{padding:24px}
+.modal-body .form-row{margin-bottom:16px}
+.modal-body .form-row-2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.modal-footer{padding:16px 24px;border-top:1px solid #F4F8F8;display:flex;justify-content:flex-end;gap:10px}
+
+.upload-preview{width:100%;max-height:200px;object-fit:contain;border-radius:var(--r-sm);margin-bottom:16px;background:var(--bg2)}
+.analyzing-overlay{text-align:center;padding:30px}
+.analyzing-overlay .spinner{width:48px;height:48px;border:4px solid var(--pink1);border-top-color:var(--pink3);border-radius:50%;animation:spin 1s linear infinite;margin:0 auto 16px}
+@keyframes spin{to{transform:rotate(360deg)}}
+.analyzing-overlay .text{font-size:14px;color:var(--text2);font-weight:600}
+
+.kp-checkbox-group{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.kp-checkbox{display:flex;align-items:center;gap:8px;padding:8px 12px;border-radius:var(--r-sm);background:#F8FBFB;cursor:pointer;border:1px solid #D5E5E8;transition:all .2s}
+.kp-checkbox:hover{background:var(--bg2)}
+.kp-checkbox input{accent-color:var(--pink3);width:16px;height:16px}
+.kp-checkbox label{font-size:12px;cursor:pointer;font-weight:600}
+
+/* ========== Toast ========== */
+.toast-container{position:fixed;top:20px;right:20px;z-index:2000;display:flex;flex-direction:column;gap:8px}
+.toast{background:var(--card);border-radius:var(--r-sm);padding:12px 20px;box-shadow:var(--shadow2);font-size:13px;font-weight:600;color:var(--text);display:flex;align-items:center;gap:8px;animation:slideIn .3s ease;border-left:4px solid var(--green)}
+.toast.error{border-left-color:#FF6B6B}
+.toast.info{border-left-color:var(--blue)}
+@keyframes slideIn{from{transform:translateX(100%);opacity:0}to{transform:translateX(0);opacity:1}}
+
+/* ========== Responsive ========== */
+.menu-toggle{display:none;position:fixed;top:16px;left:16px;z-index:101;width:40px;height:40px;border-radius:50%;background:var(--card);box-shadow:var(--shadow);align-items:center;justify-content:center;font-size:18px;cursor:pointer;border:none}
+@media(max-width:480px){
+  .sidebar{transform:translateX(-100%)}
+  .sidebar.open{transform:translateX(0)}
+  .main{margin-left:0;padding:64px 16px 24px;max-width:100%}
+  .menu-toggle{display:flex}
+  .stat-grid{grid-template-columns:1fr 1fr !important}
+  .month-summary{grid-template-columns:1fr !important}
+  .writing-layout{flex-direction:column;height:auto}
+  .writing-sidebar{width:100%;max-height:200px}
+  .writing-editor{min-height:300px}
+  .crochet-stats{grid-template-columns:1fr}
+}
+
+/* utility */
+.flex{display:flex}.flex-col{flex-direction:column}.items-center{align-items:center}.justify-between{justify-content:space-between}.gap-8{gap:8px}.gap-12{gap:12px}.gap-16{gap:16px}.mt-8{margin-top:8px}.mt-12{margin-top:12px}.mt-16{margin-top:16px}.mb-8{margin-bottom:8px}.mb-12{margin-bottom:12px}.mb-16{margin-bottom:16px}.text-sm{font-size:12px}.text-xs{font-size:11px}.text-pink{color:var(--pink4)}.text-green{color:var(--green)}.text-red{color:#FF6B6B}.text-muted{color:var(--text3)}.font-bold{font-weight:700}.font-black{font-weight:900}.text-center{text-align:center}.w-full{width:100%}.hidden{display:none}
+</style>
+</head>
+<body>
+
+<button class="menu-toggle" id="menuToggle">☰</button>
+
+<div id="app">
+  <!-- ===== Sidebar ===== -->
+  <aside class="sidebar" id="sidebar">
+    <div class="sidebar-profile">
+      <div class="avatar">🌸</div>
+      <div class="profile-name">我的工作台</div>
+      <div class="profile-sub">Bloom Workspace</div>
+    </div>
+    <nav class="sidebar-nav" id="sidebarNav">
+      <div class="nav-item active" data-view="home"><span class="nav-icon">🏠</span>首页</div>
+      <div class="nav-item" data-view="computer"><span class="nav-icon">💻</span>计算机二级<span class="nav-badge" id="navComputerBadge">0/40</span></div>
+      <div class="nav-item" data-view="english"><span class="nav-icon">📖</span>英语六级</div>
+      <div class="nav-item" data-view="savings"><span class="nav-icon">💰</span>存钱</div>
+      <div class="nav-item" data-view="novel"><span class="nav-icon">✒️</span>小说</div>
+      <div class="nav-item" data-view="crochet"><span class="nav-icon">🧶</span>钩织</div>
+    </nav>
+    <div class="sidebar-footer">
+      <div class="clock" id="clock">--:--</div>
+      <div class="date-text" id="dateText">加载中...</div>
+    </div>
+  </aside>
+
+  <!-- ===== Main Content ===== -->
+  <main class="main">
+
+    <!-- ============ HOME ============ -->
+    <section id="view-home" class="view active">
+      <div class="hero-banner">
+        <div class="hero-greeting" id="heroGreeting">你好呀～</div>
+        <div class="hero-title" id="heroTitle">欢迎回来！</div>
+        <div class="hero-sub" id="heroSub">今天也要元气满满哦 ✨</div>
+      </div>
+
+      <div class="quote-card">
+        <span class="quote-icon">💬</span>
+        <div class="quote-text">
+          <div class="quote-en" id="quoteEn">Dream it. Wish it. Do it.</div>
+          <div class="quote-cn" id="quoteCn">梦想它，期盼它，实现它。</div>
+        </div>
+        <button class="btn btn-soft btn-sm" onclick="Home.changeQuote()">🔄 换一句</button>
+      </div>
+
+      <div class="stat-grid" style="grid-template-columns:repeat(4,1fr);margin-bottom:24px" id="homeStats">
+        <!-- generated by JS -->
+      </div>
+
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px">
+        <div class="card">
+          <div class="card-title"><span class="emoji">📋</span>今日任务 <span class="badge badge-pink" id="taskProgress">0/0</span></div>
+          <div id="homeTasks"></div>
+        </div>
+        <div class="card">
+          <div class="card-title"><span class="emoji">📊</span>最近动态</div>
+          <div id="homeActivity"></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ COMPUTER ============ -->
+    <section id="view-computer" class="view">
+      <div class="page-header">
+        <div>
+          <div class="page-title"><span class="emoji">💻</span>计算机二级 MS</div>
+          <div class="page-subtitle">刷真题四十套 · 上传作业自动分析</div>
+        </div>
+        <button class="btn btn-primary" onclick="Computer.openUpload()">📤 上传作业</button>
+      </div>
+
+      <div class="card">
+        <div class="card-title"><span class="emoji">🎯</span>刷题进度</div>
+        <div style="display:flex;align-items:center;gap:16px">
+          <div style="flex:1">
+            <div class="progress-bar"><div class="progress-fill" id="computerProgress" style="width:0%"></div></div>
+          </div>
+          <div style="font-size:20px;font-weight:900;color:var(--pink4)" id="computerProgressText">0 / 40</div>
+        </div>
+        <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-top:16px">
+          <div style="text-align:center;padding:10px;background:var(--bg2);border-radius:var(--r-sm)">
+            <div class="text-xs text-muted">平均分</div>
+            <div style="font-size:18px;font-weight:800;color:var(--pink4)" id="computerAvg">--</div>
+          </div>
+          <div style="text-align:center;padding:10px;background:var(--bg2);border-radius:var(--r-sm)">
+            <div class="text-xs text-muted">最高分</div>
+            <div style="font-size:18px;font-weight:800;color:var(--green)" id="computerMax">--</div>
+          </div>
+          <div style="text-align:center;padding:10px;background:var(--bg2);border-radius:var(--r-sm)">
+            <div class="text-xs text-muted">最低分</div>
+            <div style="font-size:18px;font-weight:800;color:#FF6B6B" id="computerMin">--</div>
+          </div>
+          <div style="text-align:center;padding:10px;background:var(--bg2);border-radius:var(--r-sm)">
+            <div class="text-xs text-muted">已练套数</div>
+            <div style="font-size:18px;font-weight:800;color:var(--text)" id="computerCount">0</div>
+          </div>
+        </div>
+      </div>
+
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px">
+        <div class="card">
+          <div class="card-title"><span class="emoji">📈</span>成绩趋势</div>
+          <canvas id="computerScoreChart" height="200"></canvas>
+          <div class="empty-state hidden" id="computerChartEmpty">
+            <div class="emoji">📊</div>
+            <div class="text">上传作业后这里会显示成绩趋势图</div>
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-title"><span class="emoji">🧩</span>知识点掌握</div>
+          <div class="kp-grid" id="computerKPGrid"></div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-title"><span class="emoji">📝</span>练习记录</div>
+        <div id="computerRecords">
+          <div class="empty-state"><div class="emoji">📝</div><div class="text">还没有练习记录，上传第一份作业吧！</div></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ ENGLISH ============ -->
+    <section id="view-english" class="view">
+      <div class="page-header">
+        <div>
+          <div class="page-title"><span class="emoji">📖</span>英语六级</div>
+          <div class="page-subtitle">每日坚持 · 厚积薄发</div>
+        </div>
+      </div>
+
+      <div class="stat-grid" style="grid-template-columns:repeat(4,1fr);margin-bottom:20px">
+        <div class="stat-card"><div class="stat-icon">📚</div><div class="stat-value" id="engVocab">0</div><div class="stat-label">已背单词</div></div>
+        <div class="stat-card"><div class="stat-icon">📝</div><div class="stat-value" id="engPapers">0</div><div class="stat-label">真题套数</div></div>
+        <div class="stat-card"><div class="stat-icon">🔥</div><div class="stat-value" id="engStreak">0</div><div class="stat-label">连续打卡</div></div>
+        <div class="stat-card"><div class="stat-icon">🏆</div><div class="stat-value" id="engBest">--</div><div class="stat-label">最高分数</div></div>
+      </div>
+
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px">
+        <div class="card">
+          <div class="card-title"><span class="emoji">✅</span>今日学习任务</div>
+          <div id="engTasks"></div>
+        </div>
+        <div class="card">
+          <div class="card-title"><span class="emoji">📊</span>专项能力</div>
+          <canvas id="engRadarChart" height="220"></canvas>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-title"><span class="emoji">📈</span>模考成绩记录</div>
+        <div id="engRecords">
+          <div class="empty-state"><div class="emoji">📈</div><div class="text">还没有模考记录</div></div>
+        </div>
+        <button class="btn btn-soft btn-sm mt-12" onclick="English.openAddScore()">+ 添加模考成绩</button>
+      </div>
+    </section>
+
+    <!-- ============ SAVINGS ============ -->
+    <section id="view-savings" class="view">
+      <div class="page-header">
+        <div>
+          <div class="page-title"><span class="emoji">💰</span>存钱</div>
+          <div class="page-subtitle">总计存钱 · 本月钱财清算</div>
+        </div>
+      </div>
+
+      <div class="savings-hero">
+        <div class="label">💰 总计存钱</div>
+        <div class="amount" id="savingsTotal">¥ 0.00</div>
+        <div class="label mt-8" id="savingsMonths">已记录 0 个月</div>
+      </div>
+
+      <div class="card">
+        <div class="month-header">
+          <div class="month-title" id="savingsMonthTitle">本月清算</div>
+          <div class="flex gap-8">
+            <button class="btn btn-soft btn-sm" onclick="Savings.openUpload()">📸 截图识别</button>
+            <button class="btn btn-primary btn-sm" onclick="Savings.openAddTxn()">+ 记一笔</button>
+          </div>
+        </div>
+
+        <div class="month-summary">
+          <div class="ms-item income">
+            <div class="ms-label">💵 本月零花钱</div>
+            <div class="ms-value" id="savingsPocketMoney">¥0</div>
+          </div>
+          <div class="ms-item income">
+            <div class="ms-label">📈 本月收入</div>
+            <div class="ms-value text-green" id="savingsIncome">¥0</div>
+          </div>
+          <div class="ms-item expense">
+            <div class="ms-label">📉 本月支出</div>
+            <div class="ms-value text-red" id="savingsExpense">¥0</div>
+          </div>
+        </div>
+
+        <div style="display:flex;align-items:center;justify-content:space-between;padding:12px 16px;background:var(--bg2);border-radius:var(--r-sm);margin-bottom:16px">
+          <span class="text-sm font-bold">💰 本月结余</span>
+          <span style="font-size:22px;font-weight:900" id="savingsBalance">¥0</span>
+        </div>
+
+        <button class="btn btn-ghost btn-sm mb-12" onclick="Savings.setPocketMoney()">✏️ 设置本月零花钱</button>
+
+        <div class="card-title"><span class="emoji">📋</span>收支明细</div>
+        <div id="savingsTxnList">
+          <div class="empty-state"><div class="emoji">📋</div><div class="text">本月还没有记录</div></div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-title"><span class="emoji">📅</span>历史月份</div>
+        <div id="savingsHistory"></div>
+      </div>
+    </section>
+
+    <!-- ============ FINANCE ============ -->
+    <section id="view-finance" class="view">
+      <div class="page-header">
+        <div>
+          <div class="page-title"><span class="emoji">📈</span>理财</div>
+          <div class="page-subtitle">设定目标 · 稳步增长</div>
+        </div>
+      </div>
+
+      <div class="stat-grid" style="grid-template-columns:repeat(3,1fr);margin-bottom:20px">
+        <div class="stat-card"><div class="stat-icon">🎯</div><div class="stat-value" id="finGoalCount">0</div><div class="stat-label">理财目标</div></div>
+        <div class="stat-card"><div class="stat-icon">💼</div><div class="stat-value" id="finInvestCount">0</div><div class="stat-label">投资项目</div></div>
+        <div class="stat-card"><div class="stat-icon">📊</div><div class="stat-value" id="finTotalReturn">¥0</div><div class="stat-label">累计收益</div></div>
+      </div>
+
+      <div class="card">
+        <div class="card-title"><span class="emoji">🎯</span>理财目标 <button class="btn btn-soft btn-sm" style="margin-left:auto" onclick="Finance.openAddGoal()">+ 添加目标</button></div>
+        <div id="finGoals">
+          <div class="empty-state"><div class="emoji">🎯</div><div class="text">还没有理财目标，设定一个吧！</div></div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-title"><span class="emoji">💼</span>投资记录 <button class="btn btn-soft btn-sm" style="margin-left:auto" onclick="Finance.openAddInvest()">+ 添加投资</button></div>
+        <div id="finInvests">
+          <div class="empty-state"><div class="emoji">💼</div><div class="text">还没有投资记录</div></div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-title"><span class="emoji">📝</span>理财笔记</div>
+        <textarea class="textarea" id="finNotes" placeholder="记录你的理财心得、学习笔记..." style="min-height:120px"></textarea>
+        <button class="btn btn-primary btn-sm mt-12" onclick="Finance.saveNotes()">💾 保存笔记</button>
+      </div>
+    </section>
+
+    <!-- ============ NOVEL ============ -->
+    <section id="view-novel" class="view">
+      <div class="page-header">
+        <div>
+          <div class="page-title"><span class="emoji">✒️</span>小说创作工作台</div>
+          <div class="page-subtitle">三层学习法 · 读拆写一体</div>
+        </div>
+      </div>
+
+      <div class="novel-tabs">
+        <div class="novel-tab active" data-panel="plan">📚 学习计划</div>
+        <div class="novel-tab" data-panel="notes">📖 阅读笔记</div>
+        <div class="novel-tab" data-panel="scene">🔍 场景拆解</div>
+        <div class="novel-tab" data-panel="writing">✍️ 我的创作</div>
+      </div>
+
+      <!-- Panel: Plan -->
+      <div class="novel-panel active" id="panel-plan">
+        <div class="layer-card layer1">
+          <div class="layer-header">
+            <span class="layer-badge badge-pink">第一层</span>
+            <span class="layer-title">📖 读明白（精读2本）</span>
+          </div>
+          <div class="book-item">
+            <span class="book-icon">📕</span>
+            <div class="book-info">
+              <div class="book-name">《中国古代政治得失》钱穆</div>
+              <div class="book-desc">只读"汉代"与"唐代"两章（约60页）· 每天一节约10页</div>
+            </div>
+            <div class="book-progress">
+              <div class="progress-bar"><div class="progress-fill" id="novelBook1Bar" style="width:0%"></div></div>
+              <div class="text-xs text-center text-muted mt-8" id="novelBook1Text">0%</div>
+            </div>
+            <button class="btn btn-soft btn-sm" onclick="Novel.updateProgress('book1')">更新</button>
+          </div>
+          <div class="book-item">
+            <span class="book-icon">📗</span>
+            <div class="book-info">
+              <div class="book-name">《显微镜下的大明》马伯庸</div>
+              <div class="book-desc">读"学霸必须死——徽州丝绢案始末"（约50页）· 画博弈模型图</div>
+            </div>
+            <div class="book-progress">
+              <div class="progress-bar"><div class="progress-fill" id="novelBook2Bar" style="width:0%"></div></div>
+              <div class="text-xs text-center text-muted mt-8" id="novelBook2Text">0%</div>
+            </div>
+            <button class="btn btn-soft btn-sm" onclick="Novel.updateProgress('book2')">更新</button>
+          </div>
+          <div style="background:#F4F8F8;border-radius:var(--r-sm);padding:12px;margin-top:8px">
+            <div class="text-xs font-bold text-pink mb-8">💡 读完三问</div>
+            <div class="text-xs text-muted">1. 这一节有什么制度？ 2. 这个制度让谁有权力？限制了谁？ 3. 如果我是棋子，我会利用哪个漏洞？</div>
+          </div>
+        </div>
+
+        <div class="layer-card layer2">
+          <div class="layer-header">
+            <span class="layer-badge badge-purple">第二层</span>
+            <span class="layer-title">🔍 拆张力（3部作品 · 10个场景）</span>
+          </div>
+          <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px">
+            <div style="padding:12px;background:#F8FBFB;border-radius:var(--r-sm);text-align:center">
+              <div class="font-bold text-sm">《何不同舟渡》</div>
+              <div class="text-xs text-muted mt-8" id="novelScene1">0 / 3 场景</div>
+            </div>
+            <div style="padding:12px;background:#F8FBFB;border-radius:var(--r-sm);text-align:center">
+              <div class="font-bold text-sm">《成何体统》</div>
+              <div class="text-xs text-muted mt-8" id="novelScene2">0 / 3 场景</div>
+            </div>
+            <div style="padding:12px;background:#F8FBFB;border-radius:var(--r-sm);text-align:center">
+              <div class="font-bold text-sm">《大明王朝1566》</div>
+              <div class="text-xs text-muted mt-8" id="novelScene3">0 / 3 场景</div>
+            </div>
+          </div>
+          <div style="background:#F3E5F5;border-radius:var(--r-sm);padding:12px;margin-top:8px">
+            <div class="text-xs font-bold text-purple mb-8">💡 拆解格式（每场景不超过500字）</div>
+            <div class="text-xs text-muted">场景前：各方什么状态？ → 场景中：哪句话/动作让局面变了？ → 场景后：局势变成了什么？</div>
+          </div>
+        </div>
+
+        <div class="layer-card layer3">
+          <div class="layer-header">
+            <span class="layer-badge badge-blue">第三层</span>
+            <span class="layer-title">🔧 补细节（工具书 · 随用随查）</span>
+          </div>
+          <div class="book-item">
+            <span class="book-icon">📘</span>
+            <div class="book-info">
+              <div class="book-name">《中国古代文化常识》王力</div>
+              <div class="book-desc">不做系统读 · 写到具体细节时查对应部分（如"上朝"查"朝廷礼仪"，"称呼"查"称谓"）</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-title"><span class="emoji">📅</span>四周计划</div>
+          <div id="novelWeeks"></div>
+          <div style="background:#FFF8E1;border-radius:var(--r-sm);padding:12px;margin-top:12px">
+            <div class="text-xs font-bold mb-8" style="color:#F9A825">⏰ 执行提示</div>
+            <div class="text-xs text-muted">每天阅读50-60分钟 · 拆场景不超过1.5小时 · 笔记工具型即可 · 太累就看《文化常识》5分钟保持手感</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Panel: Notes -->
+      <div class="novel-panel" id="panel-notes">
+        <div class="card">
+          <div class="card-title"><span class="emoji">📖</span>阅读笔记</div>
+          <div class="form-row-2" style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px">
+            <div>
+              <label class="label">选择书目</label>
+              <select class="select" id="noteBookSelect">
+                <option value="政治得失">《中国古代政治得失》</option>
+                <option value="显微镜下的大明">《显微镜下的大明》</option>
+                <option value="文化常识">《中国古代文化常识》</option>
+              </select>
+            </div>
+            <div>
+              <label class="label">章节/节标题</label>
+              <input class="input" id="noteChapter" placeholder="如：汉代宰相制度">
+            </div>
+          </div>
+          <div class="mb-12">
+            <label class="label">笔记内容</label>
+            <textarea class="textarea" id="noteContent" placeholder="写下你的阅读笔记..." style="min-height:150px"></textarea>
+          </div>
+          <button class="btn btn-primary" onclick="Novel.saveNote()">💾 保存笔记</button>
+        </div>
+        <div class="card">
+          <div class="card-title"><span class="emoji">📚</span>已记录笔记 <span class="badge badge-pink" id="noteCount">0</span></div>
+          <div id="novelNotesList"></div>
+        </div>
+      </div>
+
+      <!-- Panel: Scene -->
+      <div class="novel-panel" id="panel-scene">
+        <div class="card">
+          <div class="card-title"><span class="emoji">🔍</span>场景拆解 <span class="badge badge-purple" id="sceneProgress">0/10</span></div>
+          <div class="form-row-2" style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:14px">
+            <div>
+              <label class="label">选择作品</label>
+              <select class="select" id="sceneWorkSelect">
+                <option value="何不同舟渡">《何不同舟渡》</option>
+                <option value="成何体统">《成何体统》</option>
+                <option value="大明王朝1566">《大明王朝1566》</option>
+              </select>
+            </div>
+            <div>
+              <label class="label">场景名称</label>
+              <input class="input" id="sceneName" placeholder="如：朝堂对峙">
+            </div>
+          </div>
+          <div class="scene-form-item">
+            <div class="sfi-label">🎯 场景开始前：各方什么状态？（各自想要什么/怕什么）</div>
+            <textarea class="sfi-textarea" id="sceneBefore" placeholder="分析各方的需求与恐惧..."></textarea>
+          </div>
+          <div class="scene-form-item">
+            <div class="sfi-label">⚡ 场景中：哪句话/哪个动作让局面变了？</div>
+            <textarea class="sfi-textarea" id="sceneDuring" placeholder="找到那个转折点..."></textarea>
+          </div>
+          <div class="scene-form-item">
+            <div class="sfi-label">🔄 场景结束后：局势变成了什么样？</div>
+            <textarea class="sfi-textarea" id="sceneAfter" placeholder="描述变化后的局势..."></textarea>
+          </div>
+          <button class="btn btn-primary" onclick="Novel.saveScene()">💾 保存拆解</button>
+        </div>
+        <div class="card">
+          <div class="card-title"><span class="emoji">📋</span>已拆解场景</div>
+          <div id="novelScenesList"></div>
+        </div>
+      </div>
+
+      <!-- Panel: Writing -->
+      <div class="novel-panel" id="panel-writing">
+        <div class="writing-layout">
+          <div class="writing-sidebar">
+            <div class="ws-title">
+              <span>📂 我的章节</span>
+              <button class="btn btn-primary btn-sm" onclick="Novel.newChapter()">+</button>
+            </div>
+            <div id="chapterList"></div>
+          </div>
+          <div class="writing-main">
+            <div class="writing-toolbar">
+              <input class="writing-title-input" id="writingTitle" placeholder="输入章节标题..." />
+              <button class="btn btn-soft btn-sm" onclick="Novel.deleteChapter()" title="删除当前章节">🗑️</button>
+            </div>
+            <textarea class="writing-editor" id="writingEditor" placeholder="在这里写下你的故事...&#10;&#10;每一个伟大的故事，都始于第一行字。"></textarea>
+            <div class="writing-status">
+              <span id="writingWordCount">字数: 0</span>
+              <span id="writingSaveStatus">💾 已自动保存</span>
+              <span style="margin-left:auto" class="text-muted">提示：内容每5秒自动保存</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ CROCHET ============ -->
+    <section id="view-crochet" class="view">
+      <div class="page-header">
+        <div>
+          <div class="page-title"><span class="emoji">🧶</span>钩织</div>
+          <div class="page-subtitle">花销与收入统计</div>
+        </div>
+        <button class="btn btn-primary" onclick="Crochet.openAdd()">+ 记一笔</button>
+      </div>
+
+      <div class="crochet-stats">
+        <div class="stat-card" style="background:#FFEAEA"><div class="stat-icon">📉</div><div class="stat-value text-red" id="crochetExpense">¥0</div><div class="stat-label">总支出</div></div>
+        <div class="stat-card" style="background:#E8F8EE"><div class="stat-icon">📈</div><div class="stat-value text-green" id="crochetIncome">¥0</div><div class="stat-label">总收入</div></div>
+        <div class="stat-card" style="background:var(--grad);color:#fff"><div class="stat-icon">💰</div><div class="stat-value" id="crochetProfit" style="color:#fff">¥0</div><div class="stat-label">净利润</div></div>
+      </div>
+
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px">
+        <div class="card">
+          <div class="card-title"><span class="emoji">📊</span>收支对比</div>
+          <canvas id="crochetChart" height="200"></canvas>
+        </div>
+        <div class="card">
+          <div class="card-title"><span class="emoji">🏷️</span>支出分类</div>
+          <canvas id="crochetPieChart" height="200"></canvas>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-title"><span class="emoji">📋</span>收支明细</div>
+        <div id="crochetList">
+          <div class="empty-state"><div class="emoji">📋</div><div class="text">还没有记录</div></div>
+        </div>
+      </div>
+    </section>
+
+  </main>
+</div>
+
+<!-- ===== Modal Container ===== -->
+<div class="modal-overlay" id="modalOverlay">
+  <div class="modal" id="modalContent"></div>
+</div>
+
+<!-- ===== Toast Container ===== -->
+<div class="toast-container" id="toastContainer"></div>
+<div id="syncStatus" style="position:fixed;right:18px;bottom:18px;z-index:1200;background:var(--card);color:var(--text2);box-shadow:var(--shadow2);border:1px solid var(--pink1);border-radius:999px;padding:8px 14px;font-size:12px;font-weight:700;display:flex;align-items:center;gap:6px;">☁️ 本地模式</div>
+
+<script>
+(function(){
+'use strict';
+
+/* ========== Data Store ========== */
+var STORAGE_KEY = 'bloom_workbench_v1';
+var ACCESS_CODE_KEY = 'bloom_workbench_access_code_v1';
+var data = null;
+var syncReady = false;
+var cloudClient = null;
+var cloudWorkspaceId = null;
+var cloudSaveTimer = null;
+var cloudApplyingRemote = false;
+
+/* 
+  云同步配置：
+  1. 在 Supabase 创建项目。
+  2. 运行 deploy/supabase-schema.sql 建表。
+  3. 将下面两个值替换为你的 Project URL 和 anon public key。
+*/
+var SUPABASE_URL = '请填入你的_SUPABASE_PROJECT_URL';
+var SUPABASE_ANON_KEY = '请填入你的_SUPABASE_ANON_PUBLIC_KEY';
+
+function defaultData(){
+  return {
+    createdAt: new Date().toISOString(),
+    activities: [],
+    tasks: {},
+    computer: {
+      totalPapers: 40,
+      records: [],
+      knowledgePoints: {
+        'Word排版': {total:0, correct:0},
+        'Word邮件合并': {total:0, correct:0},
+        'Word审阅': {total:0, correct:0},
+        'Word目录': {total:0, correct:0},
+        'Excel公式': {total:0, correct:0},
+        'Excel函数': {total:0, correct:0},
+        'Excel数据透视表': {total:0, correct:0},
+        'Excel图表': {total:0, correct:0},
+        'Excel条件格式': {total:0, correct:0},
+        'PPT母版': {total:0, correct:0},
+        'PPT动画': {total:0, correct:0},
+        'PPT切换': {total:0, correct:0}
+      }
+    },
+    english: {
+      vocabTotal: 2000,
+      vocabLearned: 0,
+      streak: 0,
+      lastCheckDate: null,
+      records: [],
+      skills: {listening:0, reading:0, writing:0, translation:0}
+    },
+    savings: {
+      total: 0,
+      months: {}
+    },
+    finance: {
+      goals: [],
+      investments: [],
+      notes: ''
+    },
+    novel: {
+      currentWeek: 1,
+      bookProgress: {book1: 0, book2: 0},
+      notes: [],
+      scenes: [],
+      writings: [],
+      currentWritingId: null
+    },
+    crochet: {
+      transactions: []
+    }
+  };
+}
+
+function loadData(){
+  try {
+    var saved = localStorage.getItem(STORAGE_KEY);
+    if(saved){
+      data = JSON.parse(saved);
+      // merge defaults for any new fields
+      var def = defaultData();
+      for(var k in def){
+        if(data[k] === undefined) data[k] = def[k];
+      }
+      // backfill ids for old transactions
+      if(data.savings && data.savings.months){
+        for(var mk in data.savings.months){
+          var txns = data.savings.months[mk].transactions || [];
+          for(var ti=0; ti<txns.length; ti++){
+            if(!txns[ti].id) txns[ti].id = Date.now()+'-'+ti+'-'+Math.random().toString(36).slice(2,6);
+          }
+        }
+      }
+    } else {
+      data = defaultData();
+    }
+  } catch(e){
+    data = defaultData();
+  }
+}
+
+function saveData(){
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+    if(syncReady && !cloudApplyingRemote){
+      scheduleCloudSave();
+    }
+  } catch(e){
+    toast('保存失败，存储空间可能不足', 'error');
+  }
+}
+
+function isSupabaseConfigured(){
+  return SUPABASE_URL.indexOf('请填入') === -1 && SUPABASE_ANON_KEY.indexOf('请填入') === -1;
+}
+
+function setSyncStatus(text, type){
+  var el = $('syncStatus');
+  if(!el) return;
+  el.textContent = text;
+  if(type === 'ok'){
+    el.style.color = 'var(--green)';
+    el.style.borderColor = 'var(--green)';
+  } else if(type === 'error'){
+    el.style.color = '#C75C5C';
+    el.style.borderColor = '#C75C5C';
+  } else {
+    el.style.color = 'var(--text2)';
+    el.style.borderColor = 'var(--pink1)';
+  }
+}
+
+async function hashAccessCode(code){
+  var text = 'bloom-workbench:' + code.trim();
+  var buffer = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(text));
+  return Array.from(new Uint8Array(buffer)).map(function(b){ return b.toString(16).padStart(2,'0'); }).join('');
+}
+
+function refreshActiveView(){
+  var active = document.querySelector('.view.active');
+  if(!active) return;
+  var name = active.id.replace('view-','');
+  if(name === 'home') Home.render();
+  else if(name === 'computer') Computer.render();
+  else if(name === 'english') English.render();
+  else if(name === 'savings') Savings.render();
+  else if(name === 'novel') Novel.render();
+  else if(name === 'crochet') Crochet.render();
+}
+
+async function uploadCloudData(immediate){
+  if(!syncReady || !cloudClient || !cloudWorkspaceId) return;
+  try {
+    setSyncStatus('☁️ 同步中...', 'normal');
+    var payload = JSON.parse(JSON.stringify(data));
+    payload._cloudUpdatedAt = new Date().toISOString();
+    var result = await cloudClient.from('workbench_data').upsert({
+      workspace_id: cloudWorkspaceId,
+      data: payload,
+      updated_at: new Date().toISOString()
+    }, { onConflict: 'workspace_id' });
+    if(result.error) throw result.error;
+    setSyncStatus('☁️ 已同步', 'ok');
+    if(immediate) toast('已同步到云端');
+  } catch(e){
+    console.error(e);
+    setSyncStatus('☁️ 同步失败', 'error');
+  }
+}
+
+function scheduleCloudSave(){
+  clearTimeout(cloudSaveTimer);
+  cloudSaveTimer = setTimeout(function(){ uploadCloudData(false); }, 900);
+}
+
+async function pullCloudData(){
+  var result = await cloudClient.from('workbench_data').select('data').eq('workspace_id', cloudWorkspaceId).maybeSingle();
+  if(result.error) throw result.error;
+  if(result.data && result.data.data){
+    cloudApplyingRemote = true;
+    data = result.data.data;
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+    cloudApplyingRemote = false;
+    refreshActiveView();
+    setSyncStatus('☁️ 已连接', 'ok');
+  } else {
+    await uploadCloudData(true);
+  }
+}
+
+async function enableCloudSync(accessCode){
+  if(!isSupabaseConfigured()){
+    setSyncStatus('☁️ 未配置云同步', 'normal');
+    return;
+  }
+  if(!accessCode || accessCode.trim().length < 4){
+    askAccessCode();
+    return;
+  }
+  try {
+    setSyncStatus('☁️ 连接中...', 'normal');
+    cloudClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+    cloudWorkspaceId = await hashAccessCode(accessCode);
+    localStorage.setItem(ACCESS_CODE_KEY, accessCode);
+    syncReady = true;
+    await pullCloudData();
+    cloudClient.channel('workbench-sync-' + cloudWorkspaceId)
+      .on('postgres_changes', {
+        event: '*',
+        schema: 'public',
+        table: 'workbench_data',
+        filter: 'workspace_id=eq.' + cloudWorkspaceId
+      }, function(payload){
+        if(payload.new && payload.new.data){
+          cloudApplyingRemote = true;
+          data = payload.new.data;
+          localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+          cloudApplyingRemote = false;
+          refreshActiveView();
+          setSyncStatus('☁️ 实时同步', 'ok');
+        }
+      })
+      .subscribe();
+    toast('云同步已开启');
+  } catch(e){
+    console.error(e);
+    syncReady = false;
+    setSyncStatus('☁️ 连接失败', 'error');
+    toast('云同步连接失败，请检查 Supabase 配置和建表脚本', 'error');
+  }
+}
+
+function askAccessCode(){
+  openModal(
+    '<div class="modal-header"><div class="modal-title">☁️ 开启云同步</div><div class="modal-close" onclick="closeModal()">✕</div></div>'+
+    '<div class="modal-body">'+
+      '<div class="mb-12 text-sm text-muted">手机和电脑输入同一个个人访问码，就会同步同一份工作台数据。建议设置为只有你知道的短语或密码。</div>'+
+      '<label class="label">个人访问码</label>'+
+      '<input class="input" id="syncAccessCodeInput" type="password" placeholder="请输入至少4位访问码">'+
+    '</div>'+
+    '<div class="modal-footer">'+
+      '<button class="btn btn-ghost" onclick="closeModal()">稍后再说</button>'+
+      '<button class="btn btn-primary" onclick="startSyncFromModal()">开启同步</button>'+
+    '</div>'
+  );
+}
+
+function startSyncFromModal(){
+  var code = $('syncAccessCodeInput').value.trim();
+  if(code.length < 4){
+    toast('访问码至少需要4位', 'error');
+    return;
+  }
+  closeModal();
+  enableCloudSync(code);
+}
+
+/* ========== Utils ========== */
+function $(id){ return document.getElementById(id); }
+function $$(sel){ return document.querySelectorAll(sel); }
+function fmtDate(d){
+  if(typeof d === 'string') d = new Date(d);
+  var y = d.getFullYear(), m = String(d.getMonth()+1).padStart(2,'0'), day = String(d.getDate()).padStart(2,'0');
+  return y+'-'+m+'-'+day;
+}
+function fmtDateTime(d){
+  if(typeof d === 'string') d = new Date(d);
+  return fmtDate(d) + ' ' + String(d.getHours()).padStart(2,'0') + ':' + String(d.getMinutes()).padStart(2,'0');
+}
+function monthKey(d){
+  d = d || new Date();
+  return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0');
+}
+function fmtMonth(key){
+  var parts = key.split('-');
+  return parts[0]+'年'+parseInt(parts[1])+'月';
+}
+function money(n){
+  n = parseFloat(n) || 0;
+  return '¥' + n.toFixed(2);
+}
+function countWords(text){
+  if(!text) return 0;
+  var cn = (text.match(/[\u4e00-\u9fa5]/g)||[]).length;
+  var en = (text.match(/[a-zA-Z]+/g)||[]).length;
+  return cn + en;
+}
+function timeAgo(iso){
+  var diff = Date.now() - new Date(iso).getTime();
+  var min = Math.floor(diff/60000);
+  if(min < 1) return '刚刚';
+  if(min < 60) return min+'分钟前';
+  var hr = Math.floor(min/60);
+  if(hr < 24) return hr+'小时前';
+  var day = Math.floor(hr/24);
+  if(day < 30) return day+'天前';
+  return fmtDate(iso);
+}
+function logActivity(module, text){
+  data.activities.unshift({module:module, text:text, time:new Date().toISOString()});
+  if(data.activities.length > 50) data.activities = data.activities.slice(0,50);
+  saveData();
+}
+function toast(msg, type){
+  var el = document.createElement('div');
+  el.className = 'toast' + (type === 'error' ? ' error' : type === 'info' ? ' info' : '');
+  el.innerHTML = (type === 'error' ? '❌ ' : type === 'info' ? 'ℹ️ ' : '✅ ') + msg;
+  $('toastContainer').appendChild(el);
+  setTimeout(function(){ el.style.opacity = '0'; el.style.transform = 'translateX(100%)'; setTimeout(function(){ el.remove(); }, 300); }, 2500);
+}
+
+/* ========== Modal ========== */
+function openModal(html){
+  $('modalContent').innerHTML = html;
+  $('modalOverlay').classList.add('active');
+}
+function closeModal(){
+  $('modalOverlay').classList.remove('active');
+  $('modalContent').innerHTML = '';
+}
+$('modalOverlay').addEventListener('click', function(e){
+  if(e.target === this) closeModal();
+});
+
+/* ========== Charts ========== */
+var charts = {};
+function destroyChart(id){
+  if(charts[id]){ charts[id].destroy(); delete charts[id]; }
+}
+function chartColors(){
+  return {
+    pink:'#8FB2C9', pinkLight:'#BFD6DD', pinkLighter:'#D5E5E8',
+    green:'#7ED9A0', blue:'#87CEEB', purple:'#C8A2D8', yellow:'#FFD93D', orange:'#FFB347',
+    red:'#FF6B6B'
+  };
+}
+
+/* ========== Router ========== */
+function switchView(name){
+  $$('.view').forEach(function(v){ v.classList.remove('active'); });
+  $$('.nav-item').forEach(function(n){ n.classList.remove('active'); });
+  var view = $('view-'+name);
+  if(view) view.classList.add('active');
+  var nav = document.querySelector('.nav-item[data-view="'+name+'"]');
+  if(nav) nav.classList.add('active');
+  
+  // refresh module data
+  if(name === 'home') Home.render();
+  else if(name === 'computer') Computer.render();
+  else if(name === 'english') English.render();
+  else if(name === 'savings') Savings.render();
+  else if(name === 'novel') Novel.render();
+  else if(name === 'crochet') Crochet.render();
+  
+  // close mobile sidebar
+  $('sidebar').classList.remove('open');
+}
+
+/* ========== Home Module ========== */
+var quotes = [
+  {en:'Dream it. Wish it. Do it.', cn:'梦想它，期盼它，实现它。'},
+  {en:'The pen is mightier than the sword.', cn:'笔锋胜于剑锋。'},
+  {en:'Every expert was once a beginner.', cn:'每个专家都曾是初学者。'},
+  {en:'Small steps every day add up to big results.', cn:'每天一小步，终成大成果。'},
+  {en:'Write hard and clear about what hurts.', cn:'写下最痛处，文字最有力。'},
+  {en:'The best time to plant a tree was 20 years ago. The second best time is now.', cn:'种树最好的时间是二十年前，其次是现在。'},
+  {en:'Read a thousand books, travel a thousand miles.', cn:'读万卷书，行万里路。'},
+  {en:'Words are, of course, the most powerful drug used by mankind.', cn:'文字是人类最强大的良药。'},
+  {en:'You can make anything by writing.', cn:'你可以通过书写创造一切。'},
+  {en:'A reader lives a thousand lives before he dies.', cn:'读书人死前活过千次人生。'}
+];
+
+var Home = {
+  render: function(){
+    var now = new Date();
+    var hr = now.getHours();
+    var greeting, title, sub;
+    if(hr < 6){ greeting='夜深了～'; title='注意休息哦'; sub='身体是革命的本钱 🌙'; }
+    else if(hr < 11){ greeting='早上好！'; title='新的一天开始啦'; sub='元气满满，加油鸭 ☀️'; }
+    else if(hr < 14){ greeting='中午好～'; title='别忘了吃午饭'; sub='休息一下再继续 🍱'; }
+    else if(hr < 18){ greeting='下午好！'; title='继续努力吧'; sub='每一分钟都算数 💪'; }
+    else if(hr < 22){ greeting='晚上好～'; title='今天辛苦啦'; sub='回顾一下今天的收获吧 🌸'; }
+    else { greeting='夜深了～'; title='早点休息吧'; sub='明天又是新的一天 🌙'; }
+    $('heroGreeting').textContent = greeting;
+    $('heroTitle').textContent = title;
+    $('heroSub').textContent = sub;
+
+    // quote
+    var qi = data._quoteIndex || 0;
+    if(quotes[qi]){
+      $('quoteEn').textContent = quotes[qi].en;
+      $('quoteCn').textContent = quotes[qi].cn;
+    }
+
+    // stats
+    var compDone = data.computer.records.length;
+    var novelWeek = data.novel.currentWeek;
+    var mKey = monthKey();
+    var monthData = data.savings.months[mKey] || {pocketMoney:0, transactions:[]};
+    var monthIncome = monthData.pocketMoney + monthData.transactions.filter(function(t){return t.type==='income';}).reduce(function(s,t){return s+t.amount;},0);
+    var monthExpense = monthData.transactions.filter(function(t){return t.type==='expense';}).reduce(function(s,t){return s+t.amount;},0);
+    var monthBalance = monthIncome - monthExpense;
+    var crochetIncome = data.crochet.transactions.filter(function(t){return t.type==='income';}).reduce(function(s,t){return s+t.amount;},0);
+    var crochetExpense = data.crochet.transactions.filter(function(t){return t.type==='expense';}).reduce(function(s,t){return s+t.amount;},0);
+    var crochetProfit = crochetIncome - crochetExpense;
+
+    $('homeStats').innerHTML = [
+      '<div class="stat-card" onclick="switchView(\'computer\')"><div class="stat-icon">💻</div><div class="stat-value">'+compDone+'/40</div><div class="stat-label">计算机二级</div><div class="stat-sub">'+(compDone>0?'继续加油':'开始刷题')+'</div></div>',
+      '<div class="stat-card" onclick="switchView(\'novel\')"><div class="stat-icon">✒️</div><div class="stat-value">第'+novelWeek+'周</div><div class="stat-label">小说学习</div><div class="stat-sub">'+(novelWeek<4?'进行中':'已完结')+'</div></div>',
+      '<div class="stat-card" onclick="switchView(\'savings\')"><div class="stat-icon">💰</div><div class="stat-value">'+money(monthBalance)+'</div><div class="stat-label">本月结余</div><div class="stat-sub">'+fmtMonth(mKey)+'</div></div>',
+      '<div class="stat-card" onclick="switchView(\'crochet\')"><div class="stat-icon">🧶</div><div class="stat-value">'+money(crochetProfit)+'</div><div class="stat-label">钩织净收益</div><div class="stat-sub">'+(crochetProfit>=0?'盈利中':'亏本中')+'</div></div>'
+    ].join('');
+
+    // tasks
+    var today = fmtDate(new Date());
+    var tasks = data.tasks[today] || Home.generateTodayTasks();
+    data.tasks[today] = tasks;
+    saveData();
+    
+    var doneCount = tasks.filter(function(t){return t.done;}).length;
+    $('taskProgress').textContent = doneCount+'/'+tasks.length;
+    
+    var moduleColors = {computer:'badge-blue', novel:'badge-purple', english:'badge-pink', savings:'badge-yellow', crochet:'badge-green'};
+    var moduleLabels = {computer:'计算机', novel:'小说', english:'英语', savings:'存钱', crochet:'钩织'};
+    
+    $('homeTasks').innerHTML = tasks.map(function(t, i){
+      return '<div class="task-item" onclick="Home.toggleTask('+i+')">'+
+        '<div class="task-check'+(t.done?' done':'')+'"></div>'+
+        '<span class="task-text'+(t.done?' done':'')+'">'+t.text+'</span>'+
+        '<span class="task-tag badge '+moduleColors[t.module]+'">'+moduleLabels[t.module]+'</span>'+
+      '</div>';
+    }).join('');
+
+    // activity
+    if(data.activities.length === 0){
+      $('homeActivity').innerHTML = '<div class="empty-state"><div class="emoji">🌱</div><div class="text">开始使用工作台，<br>你的动态会出现在这里！</div></div>';
+    } else {
+      var moduleDotColors = {computer:'#87CEEB', novel:'#C8A2D8', english:'#8FB2C9', savings:'#FFD93D', finance:'#7ED9A0', crochet:'#FFB347'};
+      $('homeActivity').innerHTML = data.activities.slice(0,8).map(function(a){
+        return '<div class="activity-item">'+
+          '<div class="activity-dot" style="background:'+(moduleDotColors[a.module]||'#8FB2C9')+'"></div>'+
+          '<div class="activity-content">'+
+            '<div class="activity-text">'+a.text+'</div>'+
+            '<div class="activity-time">'+timeAgo(a.time)+'</div>'+
+          '</div>'+
+        '</div>';
+      }).join('');
+    }
+  },
+  
+  generateTodayTasks: function(){
+    var tasks = [];
+    var week = data.novel.currentWeek;
+    var weekPlans = [
+      ['读《政治得失》汉唐一节','拆《何不同舟渡》场景'],
+      ['读《政治得失》唐宋一节','拆《成何体统》场景'],
+      ['读《显微镜下的大明》4-5页','拆《成何体统》场景'],
+      ['看《大明王朝1566》1集','回顾笔记写张力理解']
+    ];
+    var todayPlan = weekPlans[week-1] || weekPlans[0];
+    todayPlan.forEach(function(t){
+      tasks.push({text:t, done:false, module:'novel'});
+    });
+    
+    var compDone = data.computer.records.length;
+    if(compDone < 40){
+      tasks.push({text:'计算机二级：完成第'+(compDone+1)+'套真题', done:false, module:'computer'});
+    }
+    
+    tasks.push({text:'英语六级：背单词50个', done:false, module:'english'});
+    
+    tasks.push({text:'记录今日收支（存钱/钩织）', done:false, module:'savings'});
+    
+    return tasks;
+  },
+  
+  toggleTask: function(i){
+    var today = fmtDate(new Date());
+    var tasks = data.tasks[today];
+    if(tasks && tasks[i]){
+      tasks[i].done = !tasks[i].done;
+      saveData();
+      Home.render();
+    }
+  },
+  
+  changeQuote: function(){
+    var qi = (data._quoteIndex || 0) + 1;
+    if(qi >= quotes.length) qi = 0;
+    data._quoteIndex = qi;
+    saveData();
+    $('quoteEn').textContent = quotes[qi].en;
+    $('quoteCn').textContent = quotes[qi].cn;
+  }
+};
+
+/* ========== Computer Module ========== */
+var Computer = {
+  uploadImage: null,
+  
+  render: function(){
+    var records = data.computer.records;
+    var total = data.computer.totalPapers;
+    var done = records.length;
+    
+    $('navComputerBadge').textContent = done+'/'+total;
+    $('computerProgress').style.width = (done/total*100)+'%';
+    $('computerProgressText').textContent = done+' / '+total;
+    $('computerCount').textContent = done;
+    
+    if(done > 0){
+      var scores = records.map(function(r){return r.score;});
+      var avg = (scores.reduce(function(a,b){return a+b;},0)/scores.length).toFixed(1);
+      $('computerAvg').textContent = avg;
+      $('computerMax').textContent = Math.max.apply(null, scores);
+      $('computerMin').textContent = Math.min.apply(null, scores);
+    }
+    
+    // score chart
+    if(done > 0){
+      $('computerChartEmpty').classList.add('hidden');
+      destroyChart('computerScoreChart');
+      var ctx = $('computerScoreChart').getContext('2d');
+      charts.score = new Chart(ctx, {
+        type: 'line',
+        data: {
+          labels: records.map(function(r,i){return '#'+r.setId;}),
+          datasets: [{
+            label: '分数',
+            data: scores,
+            borderColor: '#8FB2C9',
+            backgroundColor: 'rgba(95,149,179,.1)',
+            fill: true,
+            tension: 0.3,
+            pointBackgroundColor: '#8FB2C9',
+            pointRadius: 4
+          }]
+        },
+        options: {
+          responsive: true,
+          plugins: { legend: {display:false} },
+          scales: { y: { min: 0, max: 100 } }
+        }
+      });
+    } else {
+      $('computerChartEmpty').classList.remove('hidden');
+    }
+    
+    // knowledge points
+    var kps = data.computer.knowledgePoints;
+    var kpHtml = Object.keys(kps).map(function(name){
+      var kp = kps[name];
+      var rate = kp.total > 0 ? Math.round(kp.correct/kp.total*100) : 0;
+      var color = rate >= 80 ? '#7ED9A0' : rate >= 50 ? '#FFD93D' : '#FF6B6B';
+      return '<div class="kp-item">'+
+        '<div class="kp-name">'+name+'</div>'+
+        '<div class="kp-bar"><div class="kp-bar-fill" style="width:'+rate+'%;background:'+color+'"></div></div>'+
+        '<div class="kp-rate">'+(kp.total>0?rate+'%':'未练习')+'</div>'+
+      '</div>';
+    }).join('');
+    $('computerKPGrid').innerHTML = kpHtml;
+    
+    // records
+    if(done === 0){
+      $('computerRecords').innerHTML = '<div class="empty-state"><div class="emoji">📝</div><div class="text">还没有练习记录，上传第一份作业吧！</div></div>';
+    } else {
+      var sorted = records.slice().sort(function(a,b){return b.setId-a.setId;});
+      $('computerRecords').innerHTML = '<table class="data-table"><thead><tr><th>套题</th><th>日期</th><th>分数</th><th>错误知识点</th><th></th></tr></thead><tbody>'+
+        sorted.map(function(r){
+          return '<tr>'+
+            '<td>第'+r.setId+'套</td>'+
+            '<td>'+fmtDate(r.date)+'</td>'+
+            '<td><span class="badge '+(r.score>=80?'badge-green':r.score>=60?'badge-yellow':'badge-pink')+'">'+r.score+'分</span></td>'+
+            '<td>'+r.errors.map(function(e){return '<span class="badge badge-pink" style="margin:2px">'+e+'</span>';}).join('')+'</td>'+
+            '<td><button class="btn btn-ghost btn-sm" onclick="Computer.deleteRecord('+r.setId+')">删除</button></td>'+
+          '</tr>';
+        }).join('')+
+      '</tbody></table>';
+    }
+  },
+  
+  openUpload: function(){
+    Computer.uploadImage = null;
+    openModal(
+      '<div class="modal-header"><div class="modal-title">📤 上传作业</div><div class="modal-close" onclick="closeModal()">✕</div></div>'+
+      '<div class="modal-body">'+
+        '<div id="uploadZone" class="upload-zone" onclick="Computer.triggerUpload()">'+
+          '<div class="upload-icon">📸</div>'+
+          '<div class="upload-text">点击或拖拽上传作业截图</div>'+
+          '<div class="upload-hint">支持 JPG / PNG 格式</div>'+
+        '</div>'+
+        '<input type="file" id="computerFileInput" accept="image/*" style="display:none" onchange="Computer.handleFile(this)">'+
+        '<div id="uploadPreviewArea"></div>'+
+      '</div>'
+    );
+    
+    // setup drag-drop
+    var zone = $('uploadZone');
+    zone.addEventListener('dragover', function(e){ e.preventDefault(); zone.classList.add('dragover'); });
+    zone.addEventListener('dragleave', function(){ zone.classList.remove('dragover'); });
+    zone.addEventListener('drop', function(e){
+      e.preventDefault();
+      zone.classList.remove('dragover');
+      if(e.dataTransfer.files[0]) Computer.handleFile({files:[e.dataTransfer.files[0]]});
+    });
+  },
+  
+  triggerUpload: function(){
+    $('computerFileInput').click();
+  },
+  
+  handleFile: function(input){
+    var file = input.files[0];
+    if(!file) return;
+    var reader = new FileReader();
+    reader.onload = function(e){
+      Computer.uploadImage = e.target.result;
+      $('uploadPreviewArea').innerHTML = 
+        '<img class="upload-preview" src="'+e.target.result+'">'+
+        '<div class="text-center text-muted text-sm mb-12">截图已上传，正在分析...</div>'+
+        '<div class="analyzing-overlay"><div class="spinner"></div><div class="text">AI 正在识别作业内容...</div></div>';
+      setTimeout(function(){ Computer.showAnalysisForm(); }, 2000);
+    };
+    reader.readAsDataURL(file);
+  },
+  
+  showAnalysisForm: function(){
+    var usedSets = data.computer.records.map(function(r){return r.setId;});
+    var nextSet = 1;
+    for(var i=1; i<=40; i++){ if(usedSets.indexOf(i)===-1){ nextSet=i; break; } }
+    
+    var kpCheckboxes = Object.keys(data.computer.knowledgePoints).map(function(name, i){
+      return '<div class="kp-checkbox"><input type="checkbox" id="kp_'+i+'" value="'+name+'"><label for="kp_'+i+'">'+name+'</label></div>';
+    }).join('');
+    
+    $('modalContent').innerHTML = 
+      '<div class="modal-header"><div class="modal-title">📋 核对分析结果</div><div class="modal-close" onclick="closeModal()">✕</div></div>'+
+      '<div class="modal-body">'+
+        (Computer.uploadImage ? '<img class="upload-preview" src="'+Computer.uploadImage+'">' : '')+
+        '<div class="form-row-2" style="display:grid;grid-template-columns:1fr 1fr;gap:12px">'+
+          '<div><label class="label">套题编号</label><input class="input" type="number" id="analysisSetId" value="'+nextSet+'" min="1" max="40"></div>'+
+          '<div><label class="label">分数 (0-100)</label><input class="input" type="number" id="analysisScore" value="0" min="0" max="100"></div>'+
+        '</div>'+
+        '<div class="form-row"><label class="label">错误知识点（勾选出错的）</label><div class="kp-checkbox-group">'+kpCheckboxes+'</div></div>'+
+      '</div>'+
+      '<div class="modal-footer">'+
+        '<button class="btn btn-ghost" onclick="closeModal()">取消</button>'+
+        '<button class="btn btn-primary" onclick="Computer.saveAnalysis()">💾 保存记录</button>'+
+      '</div>';
+  },
+  
+  saveAnalysis: function(){
+    var setId = parseInt($('analysisSetId').value);
+    var score = parseInt($('analysisScore').value);
+    if(!setId || setId < 1 || setId > 40){ toast('套题编号应在1-40之间', 'error'); return; }
+    if(isNaN(score) || score < 0 || score > 100){ toast('分数应在0-100之间', 'error'); return; }
+    
+    var errors = [];
+    Object.keys(data.computer.knowledgePoints).forEach(function(name, i){
+      var cb = $('kp_'+i);
+      if(cb && cb.checked) errors.push(name);
+    });
+    
+    // check duplicate
+    var existing = data.computer.records.find(function(r){return r.setId===setId;});
+    if(existing){ toast('第'+setId+'套已存在记录', 'error'); return; }
+    
+    data.computer.records.push({
+      setId: setId,
+      date: new Date().toISOString(),
+      score: score,
+      errors: errors
+    });
+    
+    // update knowledge point stats
+    Object.keys(data.computer.knowledgePoints).forEach(function(name){
+      data.computer.knowledgePoints[name].total++;
+      if(errors.indexOf(name) === -1){
+        data.computer.knowledgePoints[name].correct++;
+      }
+    });
+    
+    logActivity('computer', '完成了第'+setId+'套真题，得分'+score+'分');
+    saveData();
+    closeModal();
+    Computer.render();
+    toast('作业记录已保存！');
+  },
+  
+  deleteRecord: function(setId){
+    if(!confirm('确定删除第'+setId+'套的记录吗？')) return;
+    var rec = data.computer.records.find(function(r){return r.setId===setId;});
+    if(rec){
+      // revert knowledge point stats
+      Object.keys(data.computer.knowledgePoints).forEach(function(name){
+        data.computer.knowledgePoints[name].total--;
+        if(rec.errors.indexOf(name) === -1){
+          data.computer.knowledgePoints[name].correct--;
+        }
+        if(data.computer.knowledgePoints[name].total < 0) data.computer.knowledgePoints[name].total = 0;
+        if(data.computer.knowledgePoints[name].correct < 0) data.computer.knowledgePoints[name].correct = 0;
+      });
+    }
+    data.computer.records = data.computer.records.filter(function(r){return r.setId!==setId;});
+    saveData();
+    Computer.render();
+    toast('记录已删除');
+  }
+};
+
+/* ========== English Module ========== */
+var English = {
+  render: function(){
+    var eng = data.english;
+    $('engVocab').textContent = eng.vocabLearned;
+    $('engPapers').textContent = eng.records.length;
+    $('engStreak').textContent = eng.streak;
+    $('engBest').textContent = eng.records.length > 0 ? Math.max.apply(null, eng.records.map(function(r){return r.total;})) : '--';
+
+    // tasks
+    var today = fmtDate(new Date());
+    var tasks = [
+      {text:'背单词 50个', done:false},
+      {text:'听力练习 1篇', done:false},
+      {text:'阅读理解 2篇', done:false},
+      {text:'写作/翻译练习', done:false}
+    ];
+    $('engTasks').innerHTML = tasks.map(function(t){
+      return '<div class="task-item"><div class="task-check"></div><span class="task-text">'+t.text+'</span></div>';
+    }).join('');
+
+    // radar chart
+    destroyChart('engRadarChart');
+    var skills = eng.skills;
+    var ctx = $('engRadarChart').getContext('2d');
+    charts.engRadar = new Chart(ctx, {
+      type: 'radar',
+      data: {
+        labels: ['听力','阅读','写作','翻译'],
+        datasets: [{
+          label: '掌握度',
+          data: [skills.listening, skills.reading, skills.writing, skills.translation],
+          backgroundColor: 'rgba(95,149,179,.2)',
+          borderColor: '#8FB2C9',
+          pointBackgroundColor: '#8FB2C9'
+        }]
+      },
+      options: {
+        responsive: true,
+        plugins: { legend: {display:false} },
+        scales: { r: { min:0, max:100, ticks:{stepSize:20} } }
+      }
+    });
+
+    // records
+    if(eng.records.length === 0){
+      $('engRecords').innerHTML = '<div class="empty-state"><div class="emoji">📈</div><div class="text">还没有模考记录</div></div>';
+    } else {
+      var sorted = eng.records.slice().sort(function(a,b){return new Date(b.date)-new Date(a.date);});
+      $('engRecords').innerHTML = '<table class="data-table"><thead><tr><th>日期</th><th>听力</th><th>阅读</th><th>写作</th><th>翻译</th><th>总分</th><th></th></tr></thead><tbody>'+
+        sorted.map(function(r,i){
+          return '<tr>'+
+            '<td>'+fmtDate(r.date)+'</td>'+
+            '<td>'+r.listening+'</td>'+
+            '<td>'+r.reading+'</td>'+
+            '<td>'+r.writing+'</td>'+
+            '<td>'+r.translation+'</td>'+
+            '<td><b>'+r.total+'</b></td>'+
+            '<td><button class="btn btn-ghost btn-sm" onclick="English.deleteRecord('+i+')">删除</button></td>'+
+          '</tr>';
+        }).join('')+
+      '</tbody></table>';
+    }
+  },
+
+  openAddScore: function(){
+    openModal(
+      '<div class="modal-header"><div class="modal-title">📝 添加模考成绩</div><div class="modal-close" onclick="closeModal()">✕</div></div>'+
+      '<div class="modal-body">'+
+        '<div class="form-row-2" style="display:grid;grid-template-columns:1fr 1fr;gap:12px">'+
+          '<div><label class="label">听力 (0-248)</label><input class="input" type="number" id="engListening" value="0" min="0" max="248"></div>'+
+          '<div><label class="label">阅读 (0-249)</label><input class="input" type="number" id="engReading" value="0" min="0" max="249"></div>'+
+        '</div>'+
+        '<div class="form-row-2" style="display:grid;grid-template-columns:1fr 1fr;gap:12px">'+
+          '<div><label class="label">写作 (0-213)</label><input class="input" type="number" id="engWriting" value="0" min="0" max="213"></div>'+
+          '<div><label class="label">翻译 (0-142)</label><input class="input" type="number" id="engTranslation" value="0" min="0" max="142"></div>'+
+        '</div>'+
+      '</div>'+
+      '<div class="modal-footer">'+
+        '<button class="btn btn-ghost" onclick="closeModal()">取消</button>'+
+        '<button class="btn btn-primary" onclick="English.saveScore()">💾 保存</button>'+
+      '</div>'
+    );
+  },
+
+  saveScore: function(){
+    var l = parseInt($('engListening').value)||0;
+    var r = parseInt($('engReading').value)||0;
+    var w = parseInt($('engWriting').value)||0;
+    var t = parseInt($('engTranslation').value)||0;
+    var total = l+r+w+t;
+    
+    data.english.records.push({date:new Date().toISOString(),listening:l,reading:r,writing:w,translation:t,total:total});
+    
+    // update skill levels (rough mapping)
+    data.english.skills.listening = Math.min(100, Math.round(l/248*100));
+    data.english.skills.reading = Math.min(100, Math.round(r/249*100));
+    data.english.skills.writing = Math.min(100, Math.round(w/213*100));
+    data.english.skills.translation = Math.min(100, Math.round(t/142*100));
+    
+    logActivity('english', '添加模考成绩，总分'+total+'分');
+    saveData();
+    closeModal();
+    English.render();
+    toast('成绩已保存！');
+  },
+
+  deleteRecord: function(i){
+    if(!confirm('确定删除这条记录吗？')) return;
+    data.english.records.splice(i,1);
+    saveData();
+    English.render();
+    toast('记录已删除');
+  }
+};
+
+/* ========== Savings Module ========== */
+var Savings = {
+  uploadImage: null,
+  
+  getMonth: function(){
+    var key = monthKey();
+    if(!data.savings.months[key]){
+      data.savings.months[key] = {pocketMoney:0, transactions:[]};
+    }
+    return data.savings.months[key];
+  },
+  
+  render: function(){
+    // total = sum of all month balances
+    var totalSavings = 0;
+    var monthCount = 0;
+    Object.keys(data.savings.months).forEach(function(key){
+      var m = data.savings.months[key];
+      var inc = m.pocketMoney + m.transactions.filter(function(t){return t.type==='income';}).reduce(function(s,t){return s+t.amount;},0);
+      var exp = m.transactions.filter(function(t){return t.type==='expense';}).reduce(function(s,t){return s+t.amount;},0);
+      totalSavings += (inc - exp);
+      monthCount++;
+    });
+    
+    $('savingsTotal').textContent = money(totalSavings);
+    $('savingsMonths').textContent = '已记录 ' + monthCount + ' 个月';
+    
+    var m = Savings.getMonth();
+    $('savingsMonthTitle').textContent = fmtMonth(monthKey()) + ' 清算';
+    $('savingsPocketMoney').textContent = money(m.pocketMoney);
+    
+    var income = m.transactions.filter(function(t){return t.type==='income';}).reduce(function(s,t){return s+t.amount;},0);
+    var expense = m.transactions.filter(function(t){return t.type==='expense';}).reduce(function(s,t){return s+t.amount;},0);
+    
+    $('savingsIncome').textContent = money(income);
+    $('savingsExpense').textContent = money(expense);
+    $('savingsBalance').textContent = money(m.pocketMoney + income - expense);
+    $('savingsBalance').style.color = (m.pocketMoney + income - expense) >= 0 ? 'var(--green)' : '#FF6B6B';
+    
+    // transactions
+    if(m.transactions.length === 0){
+      $('savingsTxnList').innerHTML = '<div class="empty-state"><div class="emoji">📋</div><div class="text">本月还没有记录</div></div>';
+    } else {
+      var sorted = m.transactions.slice().sort(function(a,b){return new Date(b.date)-new Date(a.date);});
+      $('savingsTxnList').innerHTML = sorted.map(function(t){
+        return '<div class="txn-item">'+
+          '<div class="txn-icon '+t.type+'">'+(t.type==='income'?'📈':'📉')+'</div>'+
+          '<div class="txn-info"><div class="txn-desc">'+t.desc+(t.source==='screenshot'?' 📸':'')+'</div><div class="txn-date">'+fmtDate(t.date)+'</div></div>'+
+          '<div class="txn-amount '+t.type+'">'+(t.type==='income'?'+':'-')+money(t.amount)+'</div>'+
+          '<button class="btn btn-ghost btn-sm" onclick="Savings.editTxn(\''+t.id+'\')" title="修改">✏️</button>'+
+          '<button class="btn btn-ghost btn-sm" onclick="Savings.deleteTxn(\''+t.id+'\')" title="删除">✕</button>'+
+        '</div>';
+      }).join('');
+    }
+    
+    // history
+    var months = Object.keys(data.savings.months).sort().reverse();
+    if(months.length <= 1){
+      $('savingsHistory').innerHTML = '<div class="empty-state text"><div class="text">暂无历史月份</div></div>';
+    } else {
+      $('savingsHistory').innerHTML = months.slice(1).map(function(key){
+        var m = data.savings.months[key];
+        var inc = m.pocketMoney + m.transactions.filter(function(t){return t.type==='income';}).reduce(function(s,t){return s+t.amount;},0);
+        var exp = m.transactions.filter(function(t){return t.type==='expense';}).reduce(function(s,t){return s+t.amount;},0);
+        var bal = inc - exp;
+        return '<div style="display:flex;align-items:center;justify-content:space-between;padding:10px 14px;border-radius:var(--r-sm);background:var(--bg2);margin-bottom:6px">'+
+          '<span class="font-bold text-sm">'+fmtMonth(key)+'</span>'+
+          '<span class="text-xs text-muted">零花钱 '+money(m.pocketMoney)+' · 收入 '+money(inc-m.pocketMoney)+' · 支出 '+money(exp)+'</span>'+
+          '<span class="font-bold '+(bal>=0?'text-green':'text-red')+'">'+money(bal)+'</span>'+
+        '</div>';
+      }).join('');
+    }
+  },
+  
+  setPocketMoney: function(){
+    var m = Savings.getMonth();
+    openModal(
+      '<div class="modal-header"><div class="modal-title">✏️ 设置本月零花钱</div><div class="modal-close" onclick="closeModal()">✕</div></div>'+
+      '<div class="modal-body">'+
+        '<label class="label">'+fmtMonth(monthKey())+' 零花钱金额</label>'+
+        '<input class="input" type="number" id="pocketMoneyInput" value="'+m.pocketMoney+'" min="0" step="0.01">'+
+      '</div>'+
+      '<div class="modal-footer">'+
+        '<button class="btn btn-ghost" onclick="closeModal()">取消</button>'+
+        '<button class="btn btn-primary" onclick="Savings.savePocketMoney()">💾 保存</button>'+
+      '</div>'
+    );
+  },
+  
+  savePocketMoney: function(){
+    var val = parseFloat($('pocketMoneyInput').value)||0;
+    Savings.getMonth().pocketMoney = val;
+    logActivity('savings', '设置'+fmtMonth(monthKey())+'零花钱 '+money(val));
+    saveData();
+    closeModal();
+    Savings.render();
+    toast('零花钱已设置！');
+  },
+  
+  openAddTxn: function(){
+    Savings.uploadImage = null;
+    openModal(
+      '<div class="modal-header"><div class="modal-title">💰 记一笔</div><div class="modal-close" onclick="closeModal()">✕</div></div>'+
+      '<div class="modal-body">'+
+        '<div class="form-row"><label class="label">类型</label>'+
+          '<div style="display:flex;gap:8px">'+
+            '<label style="flex:1;padding:10px;border-radius:var(--r-sm);border:2px solid #D5E5E8;text-align:center;cursor:pointer" id="typeIncomeLabel"><input type="radio" name="txnType" value="income" style="display:none">📈 收入</label>'+
+            '<label style="flex:1;padding:10px;border-radius:var(--r-sm);border:2px solid #D5E5E8;text-align:center;cursor:pointer" id="typeExpenseLabel"><input type="radio" name="txnType" value="expense" style="display:none">📉 支出</label>'+
+          '</div>'+
+        '</div>'+
+        '<div class="form-row"><label class="label">金额</label><input class="input" type="number" id="txnAmount" placeholder="0.00" min="0" step="0.01"></div>'+
+        '<div class="form-row"><label class="label">描述</label><input class="input" id="txnDesc" placeholder="如：午餐、兼职收入..."></div>'+
+      '</div>'+
+      '<div class="modal-footer">'+
+        '<button class="btn btn-ghost" onclick="closeModal()">取消</button>'+
+        '<button class="btn btn-primary" onclick="Savings.saveTxn()">💾 保存</button>'+
+      '</div>'
+    );
+    // handle radio
+    var incLabel = $('typeIncomeLabel'), expLabel = $('typeExpenseLabel');
+    incLabel.addEventListener('click', function(){ incLabel.style.borderColor='var(--green)'; expLabel.style.borderColor='#D5E5E8'; incLabel.style.background='#E8F8EE'; expLabel.style.background='transparent'; });
+    expLabel.addEventListener('click', function(){ expLabel.style.borderColor='#FF6B6B'; incLabel.style.borderColor='#D5E5E8'; expLabel.style.background='#FFEAEA'; incLabel.style.background='transparent'; });
+    // default expense
+    expLabel.click();
+  },
+  
+  saveTxn: function(){
+    var type = document.querySelector('input[name="txnType"]:checked');
+    if(!type){ toast('请选择类型', 'error'); return; }
+    type = type.value;
+    var amount = parseFloat($('txnAmount').value);
+    var desc = $('txnDesc').value.trim();
+    if(!amount || amount <= 0){ toast('请输入有效金额', 'error'); return; }
+    if(!desc){ toast('请输入描述', 'error'); return; }
+    
+    var txn = {id:Date.now()+'-'+Math.random().toString(36).slice(2,8), type:type, amount:amount, desc:desc, date:new Date().toISOString(), source:'manual'};
+    if(Savings.uploadImage) txn.source = 'screenshot';
+    
+    Savings.getMonth().transactions.push(txn);
+    logActivity('savings', (type==='income'?'记录收入':'记录支出')+' '+money(amount)+' ('+desc+')');
+    saveData();
+    closeModal();
+    Savings.render();
+    toast('记录已保存！');
+  },
+  
+  deleteTxn: function(id){
+    if(!confirm('确定删除这条记录吗？')) return;
+    var txns = Savings.getMonth().transactions;
+    var idx = txns.findIndex(function(t){return t.id === id;});
+    if(idx >= 0) txns.splice(idx,1);
+    saveData();
+    Savings.render();
+    toast('记录已删除');
+  },
+  
+  editTxn: function(id){
+    var txn = Savings.getMonth().transactions.find(function(t){return t.id === id;});
+    if(!txn) return;
+    Savings.editingId = id;
+    openModal(
+      '<div class="modal-header"><div class="modal-title">✏️ 修改记录</div><div class="modal-close" onclick="closeModal()">✕</div></div>'+
+      '<div class="modal-body">'+
+        '<div class="form-row"><label class="label">类型</label>'+
+          '<div style="display:flex;gap:8px">'+
+            '<label style="flex:1;padding:10px;border-radius:var(--r-sm);border:2px solid #D5E5E8;text-align:center;cursor:pointer" id="typeIncomeLabel"><input type="radio" name="txnType" value="income" style="display:none">📈 收入</label>'+
+            '<label style="flex:1;padding:10px;border-radius:var(--r-sm);border:2px solid #D5E5E8;text-align:center;cursor:pointer" id="typeExpenseLabel"><input type="radio" name="txnType" value="expense" style="display:none">📉 支出</label>'+
+          '</div>'+
+        '</div>'+
+        '<div class="form-row"><label class="label">金额</label><input class="input" type="number" id="txnAmount" placeholder="0.00" min="0" step="0.01" value="'+txn.amount+'"></div>'+
+        '<div class="form-row"><label class="label">描述</label><input class="input" id="txnDesc" placeholder="如：午餐、兼职收入..." value="'+txn.desc.replace(/"/g,'&quot;')+'"></div>'+
+      '</div>'+
+      '<div class="modal-footer">'+
+        '<button class="btn btn-ghost" onclick="closeModal()">取消</button>'+
+        '<button class="btn btn-primary" onclick="Savings.saveEditTxn()">💾 保存</button>'+
+      '</div>'
+    );
+    var incLabel = $('typeIncomeLabel'), expLabel = $('typeExpenseLabel');
+    incLabel.addEventListener('click', function(){ incLabel.style.borderColor='var(--green)'; expLabel.style.borderColor='#D5E5E8'; incLabel.style.background='#E8F8EE'; expLabel.style.background='transparent'; });
+    expLabel.addEventListener('click', function(){ expLabel.style.borderColor='#FF6B6B'; incLabel.style.borderColor='#D5E5E8'; expLabel.style.background='#FFEAEA'; incLabel.style.background='transparent'; });
+    if(txn.type === 'income') incLabel.click();
+    else expLabel.click();
+  },
+  
+  saveEditTxn: function(){
+    var type = document.querySelector('input[name="txnType"]:checked');
+    if(!type){ toast('请选择类型', 'error'); return; }
+    type = type.value;
+    var amount = parseFloat($('txnAmount').value);
+    var desc = $('txnDesc').value.trim();
+    if(!amount || amount <= 0){ toast('请输入有效金额', 'error'); return; }
+    if(!desc){ toast('请输入描述', 'error'); return; }
+    
+    var txns = Savings.getMonth().transactions;
+    var idx = txns.findIndex(function(t){return t.id === Savings.editingId;});
+    if(idx >= 0){
+      txns[idx].type = type;
+      txns[idx].amount = amount;
+      txns[idx].desc = desc;
+    }
+    logActivity('savings', '修改记录 '+money(amount)+' ('+desc+')');
+    saveData();
+    closeModal();
+    Savings.render();
+    toast('记录已更新！');
+  },
+  
+  openUpload: function(){
+    Savings.uploadImage = null;
+    openModal(
+      '<div class="modal-header"><div class="modal-title">📸 截图识别</div><div class="modal-close" onclick="closeModal()">✕</div></div>'+
+      '<div class="modal-body">'+
+        '<div id="savingsUploadZone" class="upload-zone" onclick="Savings.triggerUpload()">'+
+          '<div class="upload-icon">📸</div>'+
+          '<div class="upload-text">上传支付截图</div>'+
+          '<div class="upload-hint">支持微信/支付宝账单截图</div>'+
+        '</div>'+
+        '<input type="file" id="savingsFileInput" accept="image/*" style="display:none" onchange="Savings.handleFile(this)">'+
+        '<div id="savingsPreviewArea"></div>'+
+      '</div>'
+    );
+    var zone = $('savingsUploadZone');
+    zone.addEventListener('dragover', function(e){ e.preventDefault(); zone.classList.add('dragover'); });
+    zone.addEventListener('dragleave', function(){ zone.classList.remove('dragover'); });
+    zone.addEventListener('drop', function(e){
+      e.preventDefault();
+      zone.classList.remove('dragover');
+      if(e.dataTransfer.files[0]) Savings.handleFile({files:[e.dataTransfer.files[0]]});
+    });
+  },
+  
+  triggerUpload: function(){
+    $('savingsFileInput').click();
+  },
+  
+  handleFile: function(input){
+    var file = input.files[0];
+    if(!file) return;
+    var reader = new FileReader();
+    reader.onload = function(e){
+      Savings.uploadImage = e.target.result;
+      $('savingsPreviewArea').innerHTML = 
+        '<img class="upload-preview" src="'+e.target.result+'">'+
+        '<div class="analyzing-overlay"><div class="spinner"></div><div class="text">正在识别金额和类型...</div></div>';
+      setTimeout(function(){ Savings.showScanForm(); }, 2000);
+    };
+    reader.readAsDataURL(file);
+  },
+  
+  showScanForm: function(){
+    openModal(
+      '<div class="modal-header"><div class="modal-title">📋 核对识别结果</div><div class="modal-close" onclick="closeModal()">✕</div></div>'+
+      '<div class="modal-body">'+
+        (Savings.uploadImage ? '<img class="upload-preview" src="'+Savings.uploadImage+'">' : '')+
+        '<div class="form-row"><label class="label">类型</label>'+
+          '<div style="display:flex;gap:8px">'+
+            '<label style="flex:1;padding:10px;border-radius:var(--r-sm);border:2px solid #D5E5E8;text-align:center;cursor:pointer" id="scanIncLabel" onclick="this.querySelector(\'input\').checked=true;this.style.borderColor=\'var(--green)\';this.style.background=\'#E8F8EE\';$(\'scanExpLabel\').style.borderColor=\'#D5E5E8\';$(\'scanExpLabel\').style.background=\'transparent\'"><input type="radio" name="scanType" value="income" style="display:none">📈 收入</label>'+
+            '<label style="flex:1;padding:10px;border-radius:var(--r-sm);border:2px solid #D5E5E8;text-align:center;cursor:pointer" id="scanExpLabel" onclick="this.querySelector(\'input\').checked=true;this.style.borderColor=\'#FF6B6B\';this.style.background=\'#FFEAEA\';$(\'scanIncLabel\').style.borderColor=\'#D5E5E8\';$(\'scanIncLabel\').style.background=\'transparent\'"><input type="radio" name="scanType" value="expense" style="display:none" checked>📉 支出</label>'+
+          '</div>'+
+        '</div>'+
+        '<div class="form-row"><label class="label">金额</label><input class="input" type="number" id="scanAmount" placeholder="0.00" min="0" step="0.01"></div>'+
+        '<div class="form-row"><label class="label">描述</label><input class="input" id="scanDesc" placeholder="如：超市购物..."></div>'+
+      '</div>'+
+      '<div class="modal-footer">'+
+        '<button class="btn btn-ghost" onclick="closeModal()">取消</button>'+
+        '<button class="btn btn-primary" onclick="Savings.saveScan()">💾 确认保存</button>'+
+      '</div>'
+    );
+  },
+  
+  saveScan: function(){
+    var typeEl = document.querySelector('input[name="scanType"]:checked');
+    if(!typeEl){ toast('请选择类型', 'error'); return; }
+    var type = typeEl.value;
+    var amount = parseFloat($('scanAmount').value);
+    var desc = $('scanDesc').value.trim();
+    if(!amount || amount <= 0){ toast('请输入有效金额', 'error'); return; }
+    if(!desc){ toast('请输入描述', 'error'); return; }
+    
+    Savings.getMonth().transactions.push({id:Date.now()+'-'+Math.random().toString(36).slice(2,8), type:type, amount:amount, desc:desc, date:new Date().toISOString(), source:'screenshot'});
+    logActivity('savings', '通过截图识别'+(type==='income'?'收入':'支出')+' '+money(amount)+' ('+desc+')');
+    saveData();
+    closeModal();
+    Savings.render();
+    toast('识别记录已保存！');
+  }
+};
+
+/* ========== Finance Module ========== */
+var Finance = {
+  render: function(){
+    $('finGoalCount').textContent = data.finance.goals.length;
+    $('finInvestCount').textContent = data.finance.investments.length;
+    var totalReturn = data.finance.investments.reduce(function(s,i){return s+(i.returnValue||0);},0);
+    $('finTotalReturn').textContent = money(totalReturn);
+
+    // goals
+    if(data.finance.goals.length === 0){
+      $('finGoals').innerHTML = '<div class="empty-state"><div class="emoji">🎯</div><div class="text">还没有理财目标，设定一个吧！</div></div>';
+    } else {
+      $('finGoals').innerHTML = data.finance.goals.map(function(g, i){
+        var pct = g.target > 0 ? Math.min(100, Math.round(g.current/g.target*100)) : 0;
+        return '<div style="padding:14px;border-radius:var(--r-sm);background:var(--bg2);margin-bottom:8px">'+
+          '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">'+
+            '<span class="font-bold">'+g.name+'</span>'+
+            '<button class="btn btn-ghost btn-sm" onclick="Finance.deleteGoal('+i+')">删除</button>'+
+          '</div>'+
+          '<div style="display:flex;justify-content:space-between;font-size:12px;color:var(--text2);margin-bottom:4px">'+
+            '<span>'+money(g.current)+' / '+money(g.target)+'</span><span>'+pct+'%</span>'+
+          '</div>'+
+          '<div class="progress-bar"><div class="progress-fill" style="width:'+pct+'%"></div></div>'+
+          (g.deadline?'<div class="text-xs text-muted mt-8">截止日期：'+fmtDate(g.deadline)+'</div>':'')+
+        '</div>';
+      }).join('');
+    }
+
+    // investments
+    if(data.finance.investments.length === 0){
+      $('finInvests').innerHTML = '<div class="empty-state"><div class="emoji">💼</div><div class="text">还没有投资记录</div></div>';
+    } else {
+      $('finInvests').innerHTML = '<table class="data-table"><thead><tr><th>项目</th><th>投入</th><th>收益</th><th>日期</th><th></th></tr></thead><tbody>'+
+        data.finance.investments.map(function(inv, i){
+          return '<tr>'+
+            '<td>'+inv.name+'</td>'+
+            '<td>'+money(inv.amount)+'</td>'+
+            '<td class="'+(inv.returnValue>=0?'text-green':'text-red')+'">'+(inv.returnValue>=0?'+':'')+money(inv.returnValue)+'</td>'+
+            '<td>'+fmtDate(inv.date)+'</td>'+
+            '<td><button class="btn btn-ghost btn-sm" onclick="Finance.deleteInvest('+i+')">删除</button></td>'+
+          '</tr>';
+        }).join('')+
+      '</tbody></table>';
+    }
+
+    // notes
+    $('finNotes').value = data.finance.notes || '';
+  },
+
+  openAddGoal: function(){
+    openModal(
+      '<div class="modal-header"><div class="modal-title">🎯 添加理财目标</div><div class="modal-close" onclick="closeModal()">✕</div></div>'+
+      '<div class="modal-body">'+
+        '<div class="form-row"><label class="label">目标名称</label><input class="input" id="goalName" placeholder="如：应急基金、旅游基金..."></div>'+
+        '<div class="form-row-2" style="display:grid;grid-template-columns:1fr 1fr;gap:12px">'+
+          '<div><label class="label">目标金额</label><input class="input" type="number" id="goalTarget" min="0" step="0.01"></div>'+
+          '<div><label class="label">当前金额</label><input class="input" type="number" id="goalCurrent" value="0" min="0" step="0.01"></div>'+
+        '</div>'+
+        '<div class="form-row"><label class="label">截止日期</label><input class="input" type="date" id="goalDeadline"></div>'+
+      '</div>'+
+      '<div class="modal-footer">'+
+        '<button class="btn btn-ghost" onclick="closeModal()">取消</button>'+
+        '<button class="btn btn-primary" onclick="Finance.saveGoal()">💾 保存</button>'+
+      '</div>'
+    );
+  },
+
+  saveGoal: function(){
+    var name = $('goalName').value.trim();
+    var target = parseFloat($('goalTarget').value)||0;
+    var current = parseFloat($('goalCurrent').value)||0;
+    var deadline = $('goalDeadline').value;
+    if(!name){ toast('请输入目标名称', 'error'); return; }
+    if(target <= 0){ toast('请输入目标金额', 'error'); return; }
+    data.finance.goals.push({name:name, target:target, current:current, deadline:deadline});
+    logActivity('finance', '添加理财目标：'+name);
+    saveData();
+    closeModal();
+    Finance.render();
+    toast('目标已添加！');
+  },
+
+  deleteGoal: function(i){
+    if(!confirm('确定删除这个目标吗？')) return;
+    data.finance.goals.splice(i,1);
+    saveData();
+    Finance.render();
+    toast('目标已删除');
+  },
+
+  openAddInvest: function(){
+    openModal(
+      '<div class="modal-header"><div class="modal-title">💼 添加投资记录</div><div class="modal-close" onclick="closeModal()">✕</div></div>'+
+      '<div class="modal-body">'+
+        '<div class="form-row"><label class="label">投资项目</label><input class="input" id="investName" placeholder="如：基金、定期存款..."></div>'+
+        '<div class="form-row-2" style="display:grid;grid-template-columns:1fr 1fr;gap:12px">'+
+          '<div><label class="label">投入金额</label><input class="input" type="number" id="investAmount" min="0" step="0.01"></div>'+
+          '<div><label class="label">收益金额</label><input class="input" type="number" id="investReturn" value="0" step="0.01"></div>'+
+        '</div>'+
+      '</div>'+
+      '<div class="modal-footer">'+
+        '<button class="btn btn-ghost" onclick="closeModal()">取消</button>'+
+        '<button class="btn btn-primary" onclick="Finance.saveInvest()">💾 保存</button>'+
+      '</div>'
+    );
+  },
+
+  saveInvest: function(){
+    var name = $('investName').value.trim();
+    var amount = parseFloat($('investAmount').value)||0;
+    var returnValue = parseFloat($('investReturn').value)||0;
+    if(!name){ toast('请输入项目名称', 'error'); return; }
+    if(amount <= 0){ toast('请输入投入金额', 'error'); return; }
+    data.finance.investments.push({name:name, amount:amount, returnValue:returnValue, date:new Date().toISOString()});
+    logActivity('finance', '添加投资：'+name+' ('+money(amount)+')');
+    saveData();
+    closeModal();
+    Finance.render();
+    toast('投资记录已添加！');
+  },
+
+  deleteInvest: function(i){
+    if(!confirm('确定删除这条记录吗？')) return;
+    data.finance.investments.splice(i,1);
+    saveData();
+    Finance.render();
+    toast('记录已删除');
+  },
+
+  saveNotes: function(){
+    data.finance.notes = $('finNotes').value;
+    saveData();
+    toast('笔记已保存！');
+  }
+};
+
+/* ========== Novel Module ========== */
+var Novel = {
+  autoSaveTimer: null,
+  
+  render: function(){
+    // book progress
+    var bp = data.novel.bookProgress;
+    $('novelBook1Bar').style.width = bp.book1 + '%';
+    $('novelBook1Text').textContent = bp.book1 + '%';
+    $('novelBook2Bar').style.width = bp.book2 + '%';
+    $('novelBook2Text').textContent = bp.book2 + '%';
+    
+    // scene counts
+    var sceneCounts = {'何不同舟渡':0, '成何体统':0, '大明王朝1566':0};
+    data.novel.scenes.forEach(function(s){ if(sceneCounts[s.work]!==undefined) sceneCounts[s.work]++; });
+    $('novelScene1').textContent = sceneCounts['何不同舟渡'] + ' / 3 场景';
+    $('novelScene2').textContent = sceneCounts['成何体统'] + ' / 3 场景';
+    $('novelScene3').textContent = sceneCounts['大明王朝1566'] + ' / 3 场景';
+    $('sceneProgress').textContent = data.novel.scenes.length + '/10';
+    
+    // weeks
+    var weekPlans = [
+      {title:'第1周', tasks:['读《政治得失》汉唐（每天一节）','拆《何不同舟渡》开始']},
+      {title:'第2周', tasks:['读《政治得失》唐宋（每天一节）','拆《何不同舟渡》第3个场景 + 《成何体统》1个场景']},
+      {title:'第3周', tasks:['读《显微镜下的大明》"丝绢案"篇（每天4-5页）','拆《成何体统》第2-3个场景']},
+      {title:'第4周', tasks:['读《大明王朝1566》5集（每天1集）','补拆1-2个场景','回顾笔记，写500字"张力理解"']}
+    ];
+    var currentWeek = data.novel.currentWeek;
+    $('novelWeeks').innerHTML = weekPlans.map(function(w, i){
+      var cls = '';
+      var badge = '';
+      if(i+1 < currentWeek){ cls = 'done'; badge = '<span class="badge badge-green">✓ 已完成</span>'; }
+      else if(i+1 === currentWeek){ cls = 'current'; badge = '<span class="badge badge-pink">进行中</span>'; }
+      else { cls = 'locked'; badge = '<span class="badge badge-yellow">未开始</span>'; }
+      return '<div class="week-card '+cls+'">'+
+        '<div class="week-header"><span class="week-label">'+w.title+'</span>'+badge+'</div>'+
+        '<ul class="week-tasks">'+w.tasks.map(function(t){return '<li>'+t+'</li>';}).join('')+'</ul>'+
+        (i+1 === currentWeek && currentWeek < 4 ? '<button class="btn btn-soft btn-sm mt-8" onclick="Novel.advanceWeek()">✓ 标记本周完成，进入下一周</button>' : '')+
+      '</div>';
+    }).join('');
+    
+    // notes
+    $('noteCount').textContent = data.novel.notes.length;
+    if(data.novel.notes.length === 0){
+      $('novelNotesList').innerHTML = '<div class="empty-state"><div class="emoji">📖</div><div class="text">还没有笔记</div></div>';
+    } else {
+      $('novelNotesList').innerHTML = data.novel.notes.slice().reverse().map(function(n){
+        return '<div style="padding:14px;border-radius:var(--r-sm);background:var(--bg2);margin-bottom:8px">'+
+          '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px">'+
+            '<span class="font-bold text-sm">📖 '+n.book+' · '+n.chapter+'</span>'+
+            '<span class="text-xs text-muted">'+fmtDate(n.date)+'</span>'+
+          '</div>'+
+          '<div class="text-sm" style="white-space:pre-wrap;color:var(--text2)">'+n.content+'</div>'+
+        '</div>';
+      }).join('');
+    }
+    
+    // scenes list
+    if(data.novel.scenes.length === 0){
+      $('novelScenesList').innerHTML = '<div class="empty-state"><div class="emoji">🔍</div><div class="text">还没有拆解记录</div></div>';
+    } else {
+      $('novelScenesList').innerHTML = data.novel.scenes.slice().reverse().map(function(s){
+        return '<div style="padding:14px;border-radius:var(--r-sm);background:var(--bg2);margin-bottom:10px">'+
+          '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">'+
+            '<span class="font-bold text-sm">📝 '+s.work+' · '+s.name+'</span>'+
+            '<span class="text-xs text-muted">'+fmtDate(s.date)+'</span>'+
+          '</div>'+
+          '<div style="font-size:12px;line-height:1.8">'+
+            '<div class="mb-8"><b style="color:var(--pink4)">🎯 场景前：</b>'+s.before+'</div>'+
+            '<div class="mb-8"><b style="color:var(--purple)">⚡ 转折点：</b>'+s.during+'</div>'+
+            '<div><b style="color:var(--blue)">🔄 场景后：</b>'+s.after+'</div>'+
+          '</div>'+
+        '</div>';
+      }).join('');
+    }
+    
+    // writing
+    Novel.renderWriting();
+  },
+  
+  renderWriting: function(){
+    var writings = data.novel.writings;
+    var currentId = data.novel.currentWritingId;
+    
+    if(writings.length === 0){
+      // create first chapter
+      var newCh = {id: Date.now(), title:'第一章', content:'', date:new Date().toISOString(), wordCount:0};
+      writings.push(newCh);
+      currentId = newCh.id;
+      data.novel.currentWritingId = currentId;
+      saveData();
+    }
+    
+    if(!currentId || !writings.find(function(w){return w.id===currentId;})){
+      currentId = writings[0].id;
+      data.novel.currentWritingId = currentId;
+    }
+    
+    // chapter list
+    $('chapterList').innerHTML = writings.map(function(w){
+      return '<div class="chapter-item'+(w.id===currentId?' active':'')+'" onclick="Novel.switchChapter('+w.id+')">'+
+        '<div>'+w.title+'</div>'+
+        '<div class="ch-meta">'+(w.wordCount||0)+'字 · '+fmtDate(w.date)+'</div>'+
+      '</div>';
+    }).join('');
+    
+    var current = writings.find(function(w){return w.id===currentId;});
+    if(current){
+      $('writingTitle').value = current.title;
+      $('writingEditor').value = current.content;
+      $('writingWordCount').textContent = '字数: ' + countWords(current.content);
+    }
+  },
+  
+  switchChapter: function(id){
+    // save current first
+    Novel.saveCurrentWriting();
+    data.novel.currentWritingId = id;
+    saveData();
+    Novel.renderWriting();
+  },
+  
+  newChapter: function(){
+    Novel.saveCurrentWriting();
+    var ch = {id: Date.now(), title:'新章节', content:'', date:new Date().toISOString(), wordCount:0};
+    data.novel.writings.push(ch);
+    data.novel.currentWritingId = ch.id;
+    logActivity('novel', '新建章节：'+ch.title);
+    saveData();
+    Novel.renderWriting();
+    toast('新章节已创建');
+  },
+  
+  deleteChapter: function(){
+    if(data.novel.writings.length <= 1){
+      toast('至少保留一个章节', 'error');
+      return;
+    }
+    if(!confirm('确定删除当前章节吗？')) return;
+    var currentId = data.novel.currentWritingId;
+    data.novel.writings = data.novel.writings.filter(function(w){return w.id!==currentId;});
+    data.novel.currentWritingId = data.novel.writings[0].id;
+    saveData();
+    Novel.renderWriting();
+    toast('章节已删除');
+  },
+  
+  saveCurrentWriting: function(){
+    var currentId = data.novel.currentWritingId;
+    var current = data.novel.writings.find(function(w){return w.id===currentId;});
+    if(current){
+      current.title = $('writingTitle').value || '无标题';
+      current.content = $('writingEditor').value;
+      current.wordCount = countWords(current.content);
+      current.date = new Date().toISOString();
+      saveData();
+    }
+  },
+  
+  updateProgress: function(book){
+    var bp = data.novel.bookProgress;
+    var current = bp[book] || 0;
+    openModal(
+      '<div class="modal-header"><div class="modal-title">📖 更新阅读进度</div><div class="modal-close" onclick="closeModal()">✕</div></div>'+
+      '<div class="modal-body">'+
+        '<label class="label">阅读进度 (%)</label>'+
+        '<input class="input" type="range" id="progressSlider" min="0" max="100" value="'+current+'" style="width:100%" oninput="$(\'progressValue\').textContent=this.value+\'%\'">'+
+        '<div style="text-align:center;font-size:24px;font-weight:900;color:var(--pink4);margin:10px 0" id="progressValue">'+current+'%</div>'+
+      '</div>'+
+      '<div class="modal-footer">'+
+        '<button class="btn btn-ghost" onclick="closeModal()">取消</button>'+
+        '<button class="btn btn-primary" onclick="Novel.saveProgress(\''+book+'\')">💾 保存</button>'+
+      '</div>'
+    );
+  },
+  
+  saveProgress: function(book){
+    var val = parseInt($('progressSlider').value);
+    data.novel.bookProgress[book] = val;
+    logActivity('novel', '更新'+(book==='book1'?'《中国古代政治得失》':'《显微镜下的大明》')+'阅读进度 '+val+'%');
+    saveData();
+    closeModal();
+    Novel.render();
+    toast('进度已更新！');
+  },
+  
+  advanceWeek: function(){
+    if(data.novel.currentWeek < 4){
+      data.novel.currentWeek++;
+      logActivity('novel', '进入第'+data.novel.currentWeek+'周学习');
+      saveData();
+      Novel.render();
+      toast('已进入第'+data.novel.currentWeek+'周！');
+    }
+  },
+  
+  saveNote: function(){
+    var book = $('noteBookSelect').value;
+    var chapter = $('noteChapter').value.trim();
+    var content = $('noteContent').value.trim();
+    if(!chapter){ toast('请输入章节标题', 'error'); return; }
+    if(!content){ toast('请输入笔记内容', 'error'); return; }
+    data.novel.notes.push({book:book, chapter:chapter, content:content, date:new Date().toISOString()});
+    logActivity('novel', '记录阅读笔记：《'+book+'》'+chapter);
+    saveData();
+    $('noteChapter').value = '';
+    $('noteContent').value = '';
+    Novel.render();
+    toast('笔记已保存！');
+  },
+  
+  saveScene: function(){
+    var work = $('sceneWorkSelect').value;
+    var name = $('sceneName').value.trim();
+    var before = $('sceneBefore').value.trim();
+    var during = $('sceneDuring').value.trim();
+    var after = $('sceneAfter').value.trim();
+    if(!name){ toast('请输入场景名称', 'error'); return; }
+    if(!before && !during && !after){ toast('请至少填写一个部分', 'error'); return; }
+    data.novel.scenes.push({work:work, name:name, before:before, during:during, after:after, date:new Date().toISOString()});
+    logActivity('novel', '拆解场景：《'+work+'》'+name);
+    saveData();
+    $('sceneName').value = '';
+    $('sceneBefore').value = '';
+    $('sceneDuring').value = '';
+    $('sceneAfter').value = '';
+    Novel.render();
+    toast('场景拆解已保存！');
+  },
+  
+  switchPanel: function(panel){
+    $$('.novel-tab').forEach(function(t){t.classList.remove('active');});
+    $$('.novel-panel').forEach(function(p){p.classList.remove('active');});
+    document.querySelector('.novel-tab[data-panel="'+panel+'"]').classList.add('active');
+    $('panel-'+panel).classList.add('active');
+    if(panel === 'writing'){
+      Novel.renderWriting();
+    }
+  }
+};
+
+/* ========== Crochet Module ========== */
+var Crochet = {
+  render: function(){
+    var txns = data.crochet.transactions;
+    var income = txns.filter(function(t){return t.type==='income';}).reduce(function(s,t){return s+t.amount;},0);
+    var expense = txns.filter(function(t){return t.type==='expense';}).reduce(function(s,t){return s+t.amount;},0);
+    var profit = income - expense;
+    
+    $('crochetExpense').textContent = money(expense);
+    $('crochetIncome').textContent = money(income);
+    $('crochetProfit').textContent = money(profit);
+    
+    // charts
+    destroyChart('crochetChart');
+    destroyChart('crochetPieChart');
+    
+    if(txns.length > 0){
+      // bar chart
+      var ctx1 = $('crochetChart').getContext('2d');
+      charts.crochetBar = new Chart(ctx1, {
+        type: 'bar',
+        data: {
+          labels: ['收入','支出','净利润'],
+          datasets: [{
+            data: [income, expense, profit],
+            backgroundColor: ['#7ED9A0','#FF6B6B','#8FB2C9'],
+            borderRadius: 8
+          }]
+        },
+        options: {
+          responsive: true,
+          plugins: { legend: {display:false} },
+          scales: { y: { beginAtZero: true } }
+        }
+      });
+      
+      // pie chart - expense categories
+      var categories = {};
+      txns.filter(function(t){return t.type==='expense';}).forEach(function(t){
+        var cat = t.category || '其他';
+        categories[cat] = (categories[cat]||0) + t.amount;
+      });
+      var catLabels = Object.keys(categories);
+      if(catLabels.length > 0){
+        var ctx2 = $('crochetPieChart').getContext('2d');
+        var colors = ['#8FB2C9','#BFD6DD','#C8A2D8','#87CEEB','#FFD93D','#7ED9A0','#FFB347','#FF6B6B'];
+        charts.crochetPie = new Chart(ctx2, {
+          type: 'doughnut',
+          data: {
+            labels: catLabels,
+            datasets: [{
+              data: catLabels.map(function(c){return categories[c];}),
+              backgroundColor: catLabels.map(function(c,i){return colors[i%colors.length];})
+            }]
+          },
+          options: {
+            responsive: true,
+            plugins: { legend: { position:'bottom', labels:{font:{size:10} } } }
+          }
+        });
+      }
+    }
+    
+    // list
+    if(txns.length === 0){
+      $('crochetList').innerHTML = '<div class="empty-state"><div class="emoji">📋</div><div class="text">还没有记录</div></div>';
+    } else {
+      var sorted = txns.slice().sort(function(a,b){return new Date(b.date)-new Date(a.date);});
+      $('crochetList').innerHTML = sorted.map(function(t, i){
+        return '<div class="txn-item">'+
+          '<div class="txn-icon '+t.type+'">'+(t.type==='income'?'🧶':'🛒')+'</div>'+
+          '<div class="txn-info"><div class="txn-desc">'+t.desc+(t.category?' · '+t.category:'')+'</div><div class="txn-date">'+fmtDate(t.date)+'</div></div>'+
+          '<div class="txn-amount '+t.type+'">'+(t.type==='income'?'+':'-')+money(t.amount)+'</div>'+
+          '<button class="btn btn-ghost btn-sm" onclick="Crochet.delete('+i+')">✕</button>'+
+        '</div>';
+      }).join('');
+    }
+  },
+  
+  openAdd: function(){
+    openModal(
+      '<div class="modal-header"><div class="modal-title">🧶 记一笔</div><div class="modal-close" onclick="closeModal()">✕</div></div>'+
+      '<div class="modal-body">'+
+        '<div class="form-row"><label class="label">类型</label>'+
+          '<div style="display:flex;gap:8px">'+
+            '<label style="flex:1;padding:10px;border-radius:var(--r-sm);border:2px solid #D5E5E8;text-align:center;cursor:pointer" id="crIncLabel" onclick="this.querySelector(\'input\').checked=true;this.style.borderColor=\'var(--green)\';this.style.background=\'#E8F8EE\';$(\'crExpLabel\').style.borderColor=\'#D5E5E8\';$(\'crExpLabel\').style.background=\'transparent\';$(\'crCategoryRow\').style.display=\'block\'"><input type="radio" name="crType" value="income" style="display:none">🧶 收入（卖出）</label>'+
+            '<label style="flex:1;padding:10px;border-radius:var(--r-sm);border:2px solid #D5E5E8;text-align:center;cursor:pointer" id="crExpLabel" onclick="this.querySelector(\'input\').checked=true;this.style.borderColor=\'#FF6B6B\';this.style.background=\'#FFEAEA\';$(\'crIncLabel\').style.borderColor=\'#D5E5E8\';$(\'crIncLabel\').style.background=\'transparent\';$(\'crCategoryRow\').style.display=\'block\'"><input type="radio" name="crType" value="expense" style="display:none" checked>🛒 支出（材料）</label>'+
+          '</div>'+
+        '</div>'+
+        '<div class="form-row"><label class="label">金额</label><input class="input" type="number" id="crAmount" placeholder="0.00" min="0" step="0.01"></div>'+
+        '<div class="form-row"><label class="label">描述</label><input class="input" id="crDesc" placeholder="如：毛线购买、成品卖出..."></div>'+
+        '<div class="form-row" id="crCategoryRow"><label class="label">分类</label>'+
+          '<select class="select" id="crCategory">'+
+            '<option value="毛线">毛线</option>'+
+            '<option value="钩针工具">钩针工具</option>'+
+            '<option value="配件">配件</option>'+
+            '<option value="成品收入">成品收入</option>'+
+            '<option value="定制收入">定制收入</option>'+
+            '<option value="其他">其他</option>'+
+          '</select>'+
+        '</div>'+
+      '</div>'+
+      '<div class="modal-footer">'+
+        '<button class="btn btn-ghost" onclick="closeModal()">取消</button>'+
+        '<button class="btn btn-primary" onclick="Crochet.save()">💾 保存</button>'+
+      '</div>'
+    );
+    // default expense
+    $('crExpLabel').click();
+    $('crCategoryRow').style.display = 'block';
+  },
+  
+  save: function(){
+    var typeEl = document.querySelector('input[name="crType"]:checked');
+    if(!typeEl){ toast('请选择类型', 'error'); return; }
+    var type = typeEl.value;
+    var amount = parseFloat($('crAmount').value);
+    var desc = $('crDesc').value.trim();
+    var category = $('crCategory').value;
+    if(!amount || amount <= 0){ toast('请输入有效金额', 'error'); return; }
+    if(!desc){ toast('请输入描述', 'error'); return; }
+    
+    data.crochet.transactions.push({type:type, amount:amount, desc:desc, category:category, date:new Date().toISOString()});
+    logActivity('crochet', (type==='income'?'钩织收入':'钩织支出')+' '+money(amount)+' ('+desc+')');
+    saveData();
+    closeModal();
+    Crochet.render();
+    toast('记录已保存！');
+  },
+  
+  delete: function(i){
+    if(!confirm('确定删除这条记录吗？')) return;
+    data.crochet.transactions.splice(i,1);
+    saveData();
+    Crochet.render();
+    toast('记录已删除');
+  }
+};
+
+/* ========== Clock ========== */
+function updateClock(){
+  var now = new Date();
+  var h = String(now.getHours()).padStart(2,'0');
+  var m = String(now.getMinutes()).padStart(2,'0');
+  $('clock').textContent = h+':'+m;
+  var days = ['日','一','二','三','四','五','六'];
+  $('dateText').textContent = (now.getMonth()+1)+'月'+now.getDate()+'日 周'+days[now.getDay()];
+}
+
+/* ========== PWA 安装与自动更新 ========== */
+function initPWA(){
+  if(!('serviceWorker' in navigator)) return;
+  window.__pwaRefreshing = false;
+  var PWA_VERSION = '2026-11-05-fix-delete-edit';
+  navigator.serviceWorker.register('./sw.js?v=' + PWA_VERSION).then(function(reg){
+    reg.update();
+    setInterval(function(){ reg.update(); }, 30 * 60 * 1000);
+    reg.addEventListener('updatefound', function(){
+      var worker = reg.installing;
+      if(!worker) return;
+      worker.addEventListener('statechange', function(){
+        if(worker.state === 'installed' && navigator.serviceWorker.controller){
+          if(typeof Novel !== 'undefined' && Novel.saveCurrentWriting){
+            try { Novel.saveCurrentWriting(); } catch(e) {}
+          }
+          toast('工作台已更新，正在载入新版', 'info');
+          worker.postMessage({type:'SKIP_WAITING'});
+        }
+      });
+    });
+  }).catch(function(err){
+    console.warn('PWA 注册失败', err);
+  });
+  navigator.serviceWorker.addEventListener('controllerchange', function(){
+    if(window.__pwaRefreshing) return;
+    window.__pwaRefreshing = true;
+    setTimeout(function(){ location.reload(); }, 500);
+  });
+}
+
+/* ========== Init ========== */
+function init(){
+  loadData();
+  initPWA();
+  
+  // nav clicks
+  $$('.nav-item').forEach(function(item){
+    item.addEventListener('click', function(){
+      switchView(this.dataset.view);
+    });
+  });
+  
+  // novel tabs
+  $$('.novel-tab').forEach(function(tab){
+    tab.addEventListener('click', function(){
+      Novel.switchPanel(this.dataset.panel);
+    });
+  });
+  
+  // writing auto-save
+  $('writingEditor').addEventListener('input', function(){
+    $('writingWordCount').textContent = '字数: ' + countWords(this.value);
+    $('writingSaveStatus').textContent = '✏️ 编辑中...';
+    clearTimeout(Novel.autoSaveTimer);
+    Novel.autoSaveTimer = setTimeout(function(){
+      Novel.saveCurrentWriting();
+      $('writingSaveStatus').textContent = '💾 已自动保存';
+    }, 2000);
+  });
+  
+  $('writingTitle').addEventListener('input', function(){
+    clearTimeout(Novel.autoSaveTimer);
+    Novel.autoSaveTimer = setTimeout(function(){
+      Novel.saveCurrentWriting();
+    }, 2000);
+  });
+  
+  // mobile menu toggle
+  if($('menuToggle')){
+    $('menuToggle').addEventListener('click', function(){
+      $('sidebar').classList.toggle('open');
+    });
+  }
+
+  if($('syncStatus')){
+    $('syncStatus').style.cursor = 'pointer';
+    $('syncStatus').title = '点击设置云同步访问码';
+    $('syncStatus').addEventListener('click', function(){
+      askAccessCode();
+    });
+  }
+  
+  // clock
+  updateClock();
+  setInterval(updateClock, 30000);
+  
+  // render home
+  Home.render();
+
+  var savedAccessCode = localStorage.getItem(ACCESS_CODE_KEY);
+  if(isSupabaseConfigured()){
+    if(savedAccessCode){
+      enableCloudSync(savedAccessCode);
+    } else {
+      setSyncStatus('☁️ 点击开启同步', 'normal');
+    }
+  } else {
+    setSyncStatus('☁️ 待配置云同步', 'normal');
+  }
+}
+
+// expose to global
+window.switchView = switchView;
+window.closeModal = closeModal;
+window.Home = Home;
+window.Computer = Computer;
+window.English = English;
+window.Savings = Savings;
+window.Finance = Finance;
+window.Novel = Novel;
+window.Crochet = Crochet;
+window.toast = toast;
+window.startSyncFromModal = startSyncFromModal;
+window.askAccessCode = askAccessCode;
+
+// start
+if(document.readyState === 'loading'){
+  document.addEventListener('DOMContentLoaded', init);
+} else {
+  init();
+}
+
+})();
+</script>
+</body>
+</html>
