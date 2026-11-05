@@ -1034,17 +1034,74 @@ async function enableCloudSync(accessCode){
 
 function askAccessCode(){
   openModal(
-    '<div class="modal-header"><div class="modal-title">☁️ 开启云同步</div><div class="modal-close" onclick="closeModal()">✕</div></div>'+
+    '<div class="modal-header"><div class="modal-title">☁️ 云同步与数据管理</div><div class="modal-close" onclick="closeModal()">✕</div></div>'+
     '<div class="modal-body">'+
       '<div class="mb-12 text-sm text-muted">手机和电脑输入同一个个人访问码，就会同步同一份工作台数据。建议设置为只有你知道的短语或密码。</div>'+
       '<label class="label">个人访问码</label>'+
       '<input class="input" id="syncAccessCodeInput" type="password" placeholder="请输入至少4位访问码">'+
+      '<hr style="margin:18px 0;border:none;border-top:1px solid var(--pink1)">'+
+      '<div class="mb-12 text-sm text-muted">💾 数据迁移：从旧网址导出数据，再到新网址导入，即可迁移所有记录。</div>'+
+      '<div style="display:flex;gap:8px">'+
+        '<button class="btn btn-ghost" style="flex:1" onclick="exportDataFile()">📤 导出数据</button>'+
+        '<label class="btn btn-ghost" style="flex:1;text-align:center;cursor:pointer">📥 导入数据<input type="file" accept=".json" onchange="importDataFile(this)" style="display:none"></label>'+
+      '</div>'+
     '</div>'+
     '<div class="modal-footer">'+
-      '<button class="btn btn-ghost" onclick="closeModal()">稍后再说</button>'+
+      '<button class="btn btn-ghost" onclick="closeModal()">关闭</button>'+
       '<button class="btn btn-primary" onclick="startSyncFromModal()">开启同步</button>'+
     '</div>'
   );
+}
+
+function exportDataFile(){
+  try {
+    var json = JSON.stringify(data, null, 2);
+    var blob = new Blob([json], {type:'application/json'});
+    var url = URL.createObjectURL(blob);
+    var a = document.createElement('a');
+    a.href = url;
+    a.download = '工作台数据备份_'+new Date().toISOString().slice(0,10)+'.json';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    toast('数据已导出！');
+  } catch(e){
+    toast('导出失败：'+e.message, 'error');
+  }
+}
+
+function importDataFile(input){
+  var file = input.files[0];
+  if(!file) return;
+  var reader = new FileReader();
+  reader.onload = function(e){
+    try {
+      var imported = JSON.parse(e.target.result);
+      if(!imported || typeof imported !== 'object'){
+        toast('文件格式不正确', 'error');
+        return;
+      }
+      if(!confirm('导入将覆盖当前所有数据，确定继续吗？')) return;
+      data = imported;
+      // backfill ids for old transactions
+      if(data.savings && data.savings.months){
+        for(var mk in data.savings.months){
+          var txns = data.savings.months[mk].transactions || [];
+          for(var ti=0; ti<txns.length; ti++){
+            if(!txns[ti].id) txns[ti].id = Date.now()+'-'+ti+'-'+Math.random().toString(36).slice(2,6);
+          }
+        }
+      }
+      saveData();
+      closeModal();
+      refreshActiveView();
+      toast('数据导入成功！');
+    } catch(err){
+      toast('导入失败：'+err.message, 'error');
+    }
+  };
+  reader.readAsText(file);
 }
 
 function startSyncFromModal(){
@@ -2444,7 +2501,7 @@ function updateClock(){
 function initPWA(){
   if(!('serviceWorker' in navigator)) return;
   window.__pwaRefreshing = false;
-  var PWA_VERSION = '2026-11-05-fix-delete-edit';
+  var PWA_VERSION = '2026-11-05-data-export-import';
   navigator.serviceWorker.register('./sw.js?v=' + PWA_VERSION).then(function(reg){
     reg.update();
     setInterval(function(){ reg.update(); }, 30 * 60 * 1000);
@@ -2555,6 +2612,8 @@ window.Crochet = Crochet;
 window.toast = toast;
 window.startSyncFromModal = startSyncFromModal;
 window.askAccessCode = askAccessCode;
+window.exportDataFile = exportDataFile;
+window.importDataFile = importDataFile;
 
 // start
 if(document.readyState === 'loading'){
